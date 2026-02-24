@@ -1,0 +1,28 @@
+# Node modules
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Build / cache
+dist/
+build/
+client/dist/
+server/dist/
+*.log
+
+# OpenClaw-generated files
+*.openclaw
+.clawcache/
+.clawstore/
+openclaw-*
+claw-*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Vite / Tailwind / TS
+client/.vite/
+client/.turbo/
+client/.tsbuildinfo
+server/.tsbuildinfo

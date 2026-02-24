@@ -1,0 +1,13 @@
+{
+  "name": "wedding-rsvp",
+  "version": "1.0.0",
+  "description": "A full-stack MERN wedding RSVP platform with Hebrew RTL support, Twilio SMS/WhatsApp integration, and an admin dashboard.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
