@@ -1,35 +1,25 @@
 import { Request, Response } from 'express';
-import { asyncHandler } from '../utils/helpers';
-import { Guest } from '../models/Guest';
-const MessagingResponse = require('twilio').twiml.MessagingResponse;
+import twilio from 'twilio';
 
-// POST /api/v1/whatsapp/incoming
-export const handleIncomingWhatsApp = asyncHandler(
-  async (req: Request, res: Response) => {
-    const twiml = new MessagingResponse();
-    const { Body, From, ProfileName } = req.body;
+const MessagingResponse = twilio.twiml.MessagingResponse;
+
+// ... (your other existing exports in this file)
+
+export const handleIncomingMessage = async (req: Request, res: Response) => {
+  try {
+    const incomingMsg = req.body.Body; // What the guest replied
+    const fromNumber = req.body.From; // The guest's phone number
     
-    // ניקוי המספר כדי לחפש ב-DB (הסרת הקידומת whatsapp:)
-    const phoneNumber = From.replace('whatsapp:', '');
+    const twiml = new MessagingResponse();
+    
+    // An auto-reply telling them to use the link
+    twiml.message('תודה על הודעתך! אנא הכנס ללינק שנשלח אליך קודם כדי לאשר או לעדכן את הגעתך לחתונה. 💍');
 
-    console.log(`הודעה התקבלה מ-${ProfileName} (${phoneNumber}): ${Body}`);
-
-    // חיפוש האורח בבסיס הנתונים לפי מספר טלפון
-    const guest = await Guest.findOne({ phone: phoneNumber });
-
-    if (!guest) {
-      twiml.message(`היי ${ProfileName}, תודה ששלחת הודעה! לא מצאנו את המספר שלך ברשימת המוזמנים. אנא צור קשר עם החתן או הכלה.`);
-    } else {
-      // כאן אפשר להוסיף לוגיקה חכמה - למשל אם הוא כתב "אישור"
-      if (Body.toLowerCase().includes('אישור') || Body.toLowerCase().includes('כן')) {
-        twiml.message(`היי ${guest.name}! שמחנו לקבל את האישור שלך. נתראה בחתונה! 🎉`);
-      } else {
-        twiml.message(`היי ${guest.name}, קיבלנו את ההודעה שלך: "${Body}". האם תרצה לאשר הגעה?`);
-      }
-    }
-
-    // שליחת ה-TwiML חזרה ל-Twilio
+    // Twilio requires an XML content type for webhooks
     res.set('Content-Type', 'text/xml');
     res.status(200).send(twiml.toString());
+  } catch (error) {
+    console.error('Error handling incoming WhatsApp message:', error);
+    res.status(500).send('Server Error');
   }
-);
+};
