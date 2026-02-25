@@ -16,14 +16,31 @@ import statsRoutes from './routes/statsRoutes';
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Security
-app.use(helmet());
-app.use(
-  cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173', // frontend URL
-    credentials: true,
-  })
-);
+// Security - helmet needs to allow cross-origin for the client to work
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+
+// CORS Configuration
+const allowedOrigins = [
+  'https://wedding-rsvp-client.onrender.com', // MUST MATCH YOUR RENDER CLIENT URL EXACTLY
+  'http://localhost:5173', 
+  'http://localhost:3000'
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // allow requests with no origin (like mobile apps or curl requests)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 // Global rate limiter
 const globalLimiter = rateLimit({
@@ -62,15 +79,13 @@ app.use((_req, res) => {
 // Global error handler
 app.use(errorHandler);
 
-// Create server instance for graceful shutdown
 let server: http.Server;
 
 const start = async () => {
   try {
     await connectDB();
     server = app.listen(PORT, () => {
-      console.log(`🚀 Server running on http://localhost:${PORT}`);
-      console.log(`📦 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🚀 Server running on port ${PORT}`);
     });
   } catch (err) {
     console.error('❌ Failed to start server:', err);
@@ -78,15 +93,12 @@ const start = async () => {
   }
 };
 
-// Graceful shutdown
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
 function shutdown() {
-  console.log('🛑 Shutting down server...');
   if (server) {
     server.close(() => {
-      console.log('✅ Server closed');
       process.exit(0);
     });
   } else {
