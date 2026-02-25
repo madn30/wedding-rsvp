@@ -21,22 +21,8 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
-// CORS Configuration
-const allowedOrigins = [
-  'https://wedding-rsvp-client.onrender.com', // MUST MATCH YOUR RENDER CLIENT URL EXACTLY
-  'http://localhost:5173', 
-  'http://localhost:3000'
-];
-
 app.use(cors({
-  origin: (origin, callback) => {
-    // allow requests with no origin (like mobile apps or curl requests)
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: 'https://wedding-rsvp-client.onrender.com', // MUST match your Render Client URL exactly (no trailing slash)
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
