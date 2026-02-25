@@ -18,12 +18,13 @@ const PORT = process.env.PORT || 5000;
 
 // 1. CORS MUST BE FIRST - Before helmet and rate limiting
 app.use(cors({
-  origin: 'https://wedding-rsvp-9d1c.onrender.com', // Verified URL
+  origin: 'https://wedding-rsvp-9d1c.onrender.com', // No trailing slash!
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 }));
-
 // 2. Security Headers - Adjusted for cross-origin
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
