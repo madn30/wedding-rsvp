@@ -1,13 +1,35 @@
 import { Request, Response } from 'express';
+import { asyncHandler } from '../utils/helpers';
+import { Guest } from '../models/Guest';
+const MessagingResponse = require('twilio').twiml.MessagingResponse;
 
-export const handleIncomingMessage = (req: Request, res: Response) => {
-  // This is the "Magic" line that will show your code in Render logs
-  console.log('--- Incoming WhatsApp/SMS Data ---');
-  console.log(req.body); 
-  console.log('Message Body:', req.body.Body);
-  console.log('----------------------------------');
+// POST /api/v1/whatsapp/incoming
+export const handleIncomingWhatsApp = asyncHandler(
+  async (req: Request, res: Response) => {
+    const twiml = new MessagingResponse();
+    const { Body, From, ProfileName } = req.body;
+    
+    // ניקוי המספר כדי לחפש ב-DB (הסרת הקידומת whatsapp:)
+    const phoneNumber = From.replace('whatsapp:', '');
 
-  // Twilio needs a valid TwiML response, even if empty
-  res.type('text/xml');
-  res.send('<Response></Response>');
-};
+    console.log(`הודעה התקבלה מ-${ProfileName} (${phoneNumber}): ${Body}`);
+
+    // חיפוש האורח בבסיס הנתונים לפי מספר טלפון
+    const guest = await Guest.findOne({ phone: phoneNumber });
+
+    if (!guest) {
+      twiml.message(`היי ${ProfileName}, תודה ששלחת הודעה! לא מצאנו את המספר שלך ברשימת המוזמנים. אנא צור קשר עם החתן או הכלה.`);
+    } else {
+      // כאן אפשר להוסיף לוגיקה חכמה - למשל אם הוא כתב "אישור"
+      if (Body.toLowerCase().includes('אישור') || Body.toLowerCase().includes('כן')) {
+        twiml.message(`היי ${guest.name}! שמחנו לקבל את האישור שלך. נתראה בחתונה! 🎉`);
+      } else {
+        twiml.message(`היי ${guest.name}, קיבלנו את ההודעה שלך: "${Body}". האם תרצה לאשר הגעה?`);
+      }
+    }
+
+    // שליחת ה-TwiML חזרה ל-Twilio
+    res.set('Content-Type', 'text/xml');
+    res.status(200).send(twiml.toString());
+  }
+);
