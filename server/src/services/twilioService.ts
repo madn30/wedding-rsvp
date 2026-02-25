@@ -27,18 +27,30 @@ const buildMessage = (name: string, rsvpLink: string): string => {
 
 export const sendSMS = async (options: SendMessageOptions): Promise<string> => {
   const { to, name, rsvpLink, channel } = options;
-  const body = buildMessage(name, rsvpLink);
 
-  // For WhatsApp: set TWILIO_WHATSAPP_NUMBER to your approved production sender
-  // (e.g. whatsapp:+972XXXXXXXXX). The sandbox number is the Twilio default fallback.
   const from =
     channel === 'whatsapp'
-      ? process.env.TWILIO_WHATSAPP_NUMBER
+      ? process.env.TWILIO_WHATSAPP_NUMBER // וודא שזה whatsapp:+972535666298
       : process.env.TWILIO_PHONE_NUMBER;
 
   const toNumber = channel === 'whatsapp' ? `whatsapp:${to}` : to;
 
-  const message = await client.messages.create({ body, from, to: toNumber });
+  // הגדרות למשלוח
+  const messagePayload: any = { from, to: toNumber };
+
+  if (channel === 'whatsapp') {
+    // ב-WhatsApp Production חייבים להשתמש ב-Template
+    messagePayload.contentSid = process.env.TWILIO_WHATSAPP_TEMPLATE_SID; // ה-SID שמתחיל ב-HX
+    messagePayload.contentVariables = JSON.stringify({
+      1: name,
+      2: rsvpLink
+    });
+  } else {
+    // ב-SMS רגיל אפשר להמשיך להשתמש בטקסט חופשי
+    messagePayload.body = buildMessage(name, rsvpLink);
+  }
+
+  const message = await client.messages.create(messagePayload);
   return message.sid;
 };
 
