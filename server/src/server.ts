@@ -16,26 +16,14 @@ import statsRoutes from './routes/statsRoutes';
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// --- STEP 1: THE PREFLIGHT SHIELD ---
-// This must be the very first thing the app does.
-app.use((req, res, next) => {
-  // If the browser is just checking "is it okay to call you?", answer YES immediately.
-  if (req.method === 'OPTIONS') {
-    res.header('Access-Control-Allow-Origin', 'https://wedding-rsvp-9d1c.onrender.com');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    return res.sendStatus(204); // Send "No Content" and STOP here.
-  }
-  next();
-});
-
-// --- STEP 2: Standard CORS (For the actual POST/GET requests) ---
 app.use(cors({
-  origin: 'https://wedding-rsvp-9d1c.onrender.com',
+  origin: process.env.CLIENT_URL,
   credentials: true,
+  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization']
 }));
 
+app.options('*', cors());
 // --- STEP 3: Security & Parsing ---
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 app.use(express.json({ limit: '10kb' }));
