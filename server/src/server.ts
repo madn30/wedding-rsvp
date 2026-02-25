@@ -12,6 +12,7 @@ import authRoutes from './routes/authRoutes';
 import guestRoutes from './routes/guestRoutes';
 import rsvpRoutes from './routes/rsvpRoutes';
 import statsRoutes from './routes/statsRoutes';
+import whatsappRoutes from './routes/whatsappRoutes';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -58,6 +59,7 @@ app.use('/api/admin', authRoutes);
 app.use('/api/guests', guestRoutes);
 app.use('/api/rsvp', rsvpRoutes);
 app.use('/api/stats', statsRoutes);
+app.use('/api/v1/whatsapp', whatsappRoutes);
 
 // 7. 404 & Error Handling
 app.use((_req, res) => {
