@@ -16,84 +16,63 @@ import statsRoutes from './routes/statsRoutes';
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// --- CRITICAL FIX 1: Strict CORS & Preflight Response ---
 app.use(cors({
   origin: 'https://wedding-rsvp-9d1c.onrender.com', 
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  preflightContinue: false,
-  optionsSuccessStatus: 204 // Some browsers fail on 200 during preflight
+  optionsSuccessStatus: 204 
 }));
 
-// Add this line immediately after to catch any stray preflights
-app.options('*', cors());
-// 2. Security Headers - Adjusted for cross-origin
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
-}));
+// --- CRITICAL FIX 2: Kill Trailing Slashes (Prevents Redirects) ---
+app.use((req, res, next) => {
+  if (req.path !== '/' && req.path.endsWith('/')) {
+    const query = req.url.slice(req.path.length);
+    const safepath = req.path.slice(0, -1);
+    // Instead of res.redirect (which breaks CORS), we just fix it internally
+    req.url = safepath + query;
+  }
+  next();
+});
 
-// 3. Global rate limiter - Skip OPTIONS requests to avoid preflight issues
+// Security & Limiter (Keep these AFTER CORS)
+app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
+
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 300,
-  standardHeaders: true,
-  legacyHeaders: false,
-  skip: (req) => req.method === 'OPTIONS', // Important!
+  skip: (req) => req.method === 'OPTIONS', 
 });
 app.use(globalLimiter);
 
-// 4. Parsing
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// 5. Logging
 if (process.env.NODE_ENV !== 'test') {
   app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 }
 
-// Health check
-app.get('/health', (_req, res) => {
-  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
-// 6. Routes
+// Routes
 app.use('/api/admin', authRoutes);
 app.use('/api/guests', guestRoutes);
 app.use('/api/rsvp', rsvpRoutes);
 app.use('/api/stats', statsRoutes);
 
-// 7. 404 & Error Handling
-app.use((_req, res) => {
-  res.status(404).json({ success: false, message: 'Route not found.' });
-});
+app.get('/health', (_req, res) => res.status(200).send('OK'));
 
+app.use((_req, res) => res.status(404).json({ success: false, message: 'Route not found.' }));
 app.use(errorHandler);
 
 let server: http.Server;
-
 const start = async () => {
   try {
     await connectDB();
-    server = app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-    });
+    server = app.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
   } catch (err) {
-    console.error('❌ Failed to start server:', err);
+    console.error('❌ Error:', err);
     process.exit(1);
   }
 };
 
-process.on('SIGINT', () => shutdown());
-process.on('SIGTERM', () => shutdown());
-
-function shutdown() {
-  if (server) {
-    server.close(() => process.exit(0));
-  } else {
-    process.exit(0);
-  }
-}
-
 start();
-
-export default app;

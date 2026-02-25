@@ -98,7 +98,7 @@ export const sendInvitation = asyncHandler(
       return next(new AppError('Guest not found.', 404));
     }
 
-const rsvpLink = `${process.env.RSVP_BASE_URL}/rsvp/${guest.token}`;
+    const rsvpLink = `${process.env.RSVP_BASE_URL}/rsvp/${guest.token}`;
 
     await sendSMS({
       to: guest.phone,
