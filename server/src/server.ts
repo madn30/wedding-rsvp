@@ -22,7 +22,7 @@ app.use(helmet({
 }));
 
 app.use(cors({
-  origin: 'https://wedding-rsvp-client.onrender.com', // MUST match your Render Client URL exactly (no trailing slash)
+  origin: 'https://wedding-rsvp-9d1c.onrender.com', // MUST match your Render Client URL exactly (no trailing slash)
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
