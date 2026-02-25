@@ -16,32 +16,34 @@ import statsRoutes from './routes/statsRoutes';
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Security - helmet needs to allow cross-origin for the client to work
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
-}));
-
+// 1. CORS MUST BE FIRST - Before helmet and rate limiting
 app.use(cors({
-  origin: 'https://wedding-rsvp-9d1c.onrender.com', // MUST match your Render Client URL exactly (no trailing slash)
+  origin: 'https://wedding-rsvp-9d1c.onrender.com', // Verified URL
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Global rate limiter
+// 2. Security Headers - Adjusted for cross-origin
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+
+// 3. Global rate limiter - Skip OPTIONS requests to avoid preflight issues
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 300,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => req.method === 'OPTIONS', // Important!
 });
 app.use(globalLimiter);
 
-// Parsing
+// 4. Parsing
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Logging
+// 5. Logging
 if (process.env.NODE_ENV !== 'test') {
   app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 }
@@ -51,18 +53,17 @@ app.get('/health', (_req, res) => {
   res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Routes
+// 6. Routes
 app.use('/api/admin', authRoutes);
 app.use('/api/guests', guestRoutes);
 app.use('/api/rsvp', rsvpRoutes);
 app.use('/api/stats', statsRoutes);
 
-// 404
+// 7. 404 & Error Handling
 app.use((_req, res) => {
   res.status(404).json({ success: false, message: 'Route not found.' });
 });
 
-// Global error handler
 app.use(errorHandler);
 
 let server: http.Server;
@@ -79,14 +80,12 @@ const start = async () => {
   }
 };
 
-process.on('SIGINT', shutdown);
-process.on('SIGTERM', shutdown);
+process.on('SIGINT', () => shutdown());
+process.on('SIGTERM', () => shutdown());
 
 function shutdown() {
   if (server) {
-    server.close(() => {
-      process.exit(0);
-    });
+    server.close(() => process.exit(0));
   } else {
     process.exit(0);
   }
