@@ -16,15 +16,17 @@ import statsRoutes from './routes/statsRoutes';
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// 1. CORS MUST BE FIRST - Before helmet and rate limiting
 app.use(cors({
-  origin: 'https://wedding-rsvp-9d1c.onrender.com', // No trailing slash!
+  origin: 'https://wedding-rsvp-9d1c.onrender.com', 
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
   preflightContinue: false,
-  optionsSuccessStatus: 204
+  optionsSuccessStatus: 204 // Some browsers fail on 200 during preflight
 }));
+
+// Add this line immediately after to catch any stray preflights
+app.options('*', cors());
 // 2. Security Headers - Adjusted for cross-origin
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
