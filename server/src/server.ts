@@ -16,44 +16,81 @@ import statsRoutes from './routes/statsRoutes';
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// 1. CORS MUST BE FIRST - Before helmet and rate limiting
 app.use(cors({
-  origin: process.env.CLIENT_URL,
+  origin: 'https://wedding-rsvp-9d1c.onrender.com', // Verified URL
   credentials: true,
-  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-app.options('*', cors());
-// --- STEP 3: Security & Parsing ---
-app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
+// 2. Security Headers - Adjusted for cross-origin
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+
+// 3. Global rate limiter - Skip OPTIONS requests to avoid preflight issues
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.method === 'OPTIONS', // Important!
+});
+app.use(globalLimiter);
+
+// 4. Parsing
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// 5. Logging
 if (process.env.NODE_ENV !== 'test') {
   app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 }
 
-// --- STEP 4: Routes ---
+// Health check
+app.get('/health', (_req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// 6. Routes
 app.use('/api/admin', authRoutes);
 app.use('/api/guests', guestRoutes);
 app.use('/api/rsvp', rsvpRoutes);
 app.use('/api/stats', statsRoutes);
 
-// Health check (Simple string to avoid JSON overhead)
-app.get('/health', (_req, res) => res.status(200).send('ok'));
+// 7. 404 & Error Handling
+app.use((_req, res) => {
+  res.status(404).json({ success: false, message: 'Route not found.' });
+});
 
-app.use((_req, res) => res.status(404).json({ success: false, message: 'Route not found.' }));
 app.use(errorHandler);
 
-// Server Start Logic
 let server: http.Server;
+
 const start = async () => {
   try {
     await connectDB();
-    server = app.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
+    server = app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+    });
   } catch (err) {
-    console.error('❌ Error:', err);
+    console.error('❌ Failed to start server:', err);
     process.exit(1);
   }
 };
+
+process.on('SIGINT', () => shutdown());
+process.on('SIGTERM', () => shutdown());
+
+function shutdown() {
+  if (server) {
+    server.close(() => process.exit(0));
+  } else {
+    process.exit(0);
+  }
+}
+
 start();
+
+export default app;
