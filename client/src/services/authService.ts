@@ -1,5 +1,5 @@
 import api from './api';
-import { Admin, Stats, ApiResponse, RSVPData, RSVPResponse } from '../types';
+import { Admin, Stats, ApiResponse, RSVPData, RSVPSubmitPayload } from '../types';
 
 // Auth
 export const login = async (
@@ -32,7 +32,7 @@ export const getRSVP = async (token: string): Promise<RSVPData> => {
 
 export const submitRSVP = async (
   token: string,
-  response: RSVPResponse
+  payload: RSVPSubmitPayload
 ): Promise<void> => {
-  await api.post(`/rsvp/${token}`, { response });
+  await api.post(`/rsvp/${token}`, payload);
 };

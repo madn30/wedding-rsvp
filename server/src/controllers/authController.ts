@@ -5,11 +5,8 @@ import { AppError, asyncHandler } from '../utils/helpers';
 
 export const login = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
-console.log("HELLO");
-
     const { email, password } = req.body;
 
-    console.log({email,password})
     const admin = await Admin.findOne({ email }).select('+password');
     if (!admin || !(await admin.comparePassword(password))) {
       return next(new AppError('Invalid email or password.', 401));
@@ -32,7 +29,7 @@ export const getMe = asyncHandler(
   async (req: Request & { admin?: { id: string; email: string } }, res: Response) => {
     res.status(200).json({
       success: true,
-      admin: req.admin,
+      data: req.admin,  // matches ApiResponse<Admin> shape the client expects
     });
   }
 );
