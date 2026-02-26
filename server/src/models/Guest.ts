@@ -17,6 +17,7 @@ export interface IGuest extends Document {
   messageSent: boolean;
   messageChannel: MessageChannel | null;
   messageSentAt: Date | null;
+  whatsappReplied: boolean;  // true once guest has sent us at least one WhatsApp message
   createdAt: Date;
   updatedAt: Date;
 }
@@ -87,6 +88,10 @@ const GuestSchema = new Schema<IGuest>(
     messageSentAt: {
       type: Date,
       default: null,
+    },
+    whatsappReplied: {
+      type: Boolean,
+      default: false,
     },
   },
   {
