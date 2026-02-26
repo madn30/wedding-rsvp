@@ -4,136 +4,114 @@ import { RSVPData, RSVPResponse } from '../types';
 import { getRSVP } from '../services/authService';
 import { RSVPButtons } from '../components/guest/RSVPButtons';
 import { FullPageLoader } from '../components/ui';
+import s from './RSVPPage.module.css';
 
-const RESPONSE_MESSAGES: Record<NonNullable<RSVPResponse>, string> = {
-  yes: 'נהדר! אנחנו שמחים שתגיע 🎉',
-  no: 'חבל, נתגעגע אליך 💔',
-  maybe: 'תעדכן אותנו בהקדם 🙏',
+const RESPONSE_MESSAGES: Record<NonNullable<RSVPResponse>, { text: string; emoji: string }> = {
+  yes:   { text: 'נהדר! אנחנו שמחים שתגיע',  emoji: '🎉' },
+  no:    { text: 'חבל, נתגעגע אליך',           emoji: '💔' },
+  maybe: { text: 'תעדכן אותנו בהקדם',          emoji: '🤔' },
 };
 
 export const RSVPPage = () => {
   const { token } = useParams<{ token: string }>();
-  const [data, setData] = useState<RSVPData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [data, setData]         = useState<RSVPData | null>(null);
+  const [isLoading, setLoading] = useState(true);
+  const [error, setError]       = useState('');
   const [submitted, setSubmitted] = useState<RSVPResponse>(null);
 
   useEffect(() => {
     if (!token) return;
 
     if (token === 'test') {
-      setTimeout(() => { 
+      const timer = setTimeout(() => {
         setData({
           name: 'ישראל ישראלי',
           coupleNames: 'ליאל ועידן',
           weddingDate: '12.09.2026',
+          venue: '',
           response: null,
-        } as RSVPData);
-        setIsLoading(false);
-      }, 800);
-      return;
+          respondedAt: null,
+          numberOfGuests: 1,
+          foodPreference: null,
+          transportNeeded: false,
+          specialRequests: '',
+        });
+        setLoading(false);
+      }, 700);
+      return () => clearTimeout(timer);
     }
 
-    // 🌐 Real Backend Call
     getRSVP(token)
-      .then((d) => {
+      .then(d => {
         setData(d);
         if (d.response) setSubmitted(d.response);
       })
       .catch(() => setError('קישור ה-RSVP אינו תקין או שפג תוקפו.'))
-      .finally(() => setIsLoading(false));
+      .finally(() => setLoading(false));
   }, [token]);
+
   if (isLoading) return <FullPageLoader />;
 
   return (
-    <div
-      dir="rtl"
-      className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
-      style={{
-        background:
-          'linear-gradient(135deg, #fff1f2 0%, #fce7f3 30%, #fdf2f8 60%, #fffbeb 100%)',
-      }}
-    >
-      {/* Decorative orbs */}
-      <div className="absolute top-0 right-0 w-96 h-96 bg-rose-200/40 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-      <div className="absolute bottom-0 left-0 w-80 h-80 bg-amber-200/30 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
-      <div className="absolute top-1/2 left-1/4 w-48 h-48 bg-pink-200/20 rounded-full blur-2xl" />
+    <main className={s.page}>
+      <article className={s.card}>
+        <span className={s.ringIcon} aria-hidden="true">💍</span>
 
-      <div className="relative w-full max-w-md animate-slide-up">
-        {/* Card */}
-        <div className="glass-card p-8 text-center">
-          {/* Ring decoration */}
-          <div className="text-6xl mb-2 animate-pulse-soft">💍</div>
+        {error ? (
+          <div className={s.errorState}>
+            <h1 className={s.errorTitle}>קישור לא תקין</h1>
+            <p className={s.errorMsg}>{error}</p>
+          </div>
+        ) : data ? (
+          <>
+            {/* Couple + Date */}
+            <h1 className={s.coupleNames}>{data.coupleNames}</h1>
+            {data.weddingDate && (
+              <p className={s.weddingDate}>{data.weddingDate}</p>
+            )}
 
-          {error ? (
-            <div className="space-y-4">
-              <h1 className="font-serif text-2xl font-bold text-gray-700">
-                קישור לא תקין
-              </h1>
-              <p className="text-gray-500">{error}</p>
+            {/* Divider */}
+            <div className={s.divider} aria-hidden="true">
+              <div className={s.dividerLine} />
+              <span className={s.dividerIcon}>🌸</span>
+              <div className={s.dividerLine} />
             </div>
-          ) : data ? (
-            <>
-              {/* Couple Names & Date */}
-              <div className="mb-6">
-                <h1 className="font-serif text-3xl font-bold text-gray-800 leading-tight">
-                  {data.coupleNames}
-                </h1>
-                {data.weddingDate && (
-                  <p className="text-rose-400 font-medium mt-1">{data.weddingDate}</p>
+
+            {/* Guest greeting */}
+            <div className={s.greeting}>
+              <p className={s.greetingLabel}>שלום,</p>
+              <h2 className={s.guestName}>{data.name}</h2>
+              <p className={s.cta}>נשמח לראותך בחתונה שלנו!<br />אנא אשר את הגעתך:</p>
+            </div>
+
+            {/* Response area */}
+            {submitted ? (
+              <div className={s.submittedBox}>
+                <div className={s.submittedCard}>
+                  <p className={s.submittedEmoji} aria-hidden="true">
+                    {RESPONSE_MESSAGES[submitted].emoji}
+                  </p>
+                  <p className={s.submittedMsg}>{RESPONSE_MESSAGES[submitted].text}</p>
+                  <p className={s.submittedSub}>תשובתך נרשמה בהצלחה</p>
+                </div>
+                {data.respondedAt && (
+                  <p className={s.submittedDate}>
+                    נענה ב‑{new Date(data.respondedAt).toLocaleDateString('he-IL')}
+                  </p>
                 )}
-                <div className="my-4 flex items-center gap-2">
-                  <div className="flex-1 h-px bg-rose-200" />
-                  <span className="text-rose-300 text-sm">🌸</span>
-                  <div className="flex-1 h-px bg-rose-200" />
-                </div>
               </div>
-
-              {/* Guest greeting */}
-              <div className="mb-8">
-                <p className="text-gray-500 text-sm mb-1">שלום,</p>
-                <h2 className="font-serif text-2xl font-semibold text-gray-800">
-                  {data.name}
-                </h2>
-                <p className="text-gray-600 mt-3 leading-relaxed">
-                  נשמח לראותך בחתונה שלנו! אנא אשר את הגעתך:
-                </p>
+            ) : (
+              <div className={s.btnsWrap}>
+                <RSVPButtons token={token!} onSuccess={setSubmitted} />
               </div>
+            )}
+          </>
+        ) : null}
+      </article>
 
-              {/* Already responded */}
-              {submitted ? (
-                <div className="space-y-4">
-                  <div className="bg-rose-50 border border-rose-200 rounded-2xl p-6">
-                    <div className="text-3xl mb-2">
-                      {submitted === 'yes' ? '🎉' : submitted === 'no' ? '💔' : '🤔'}
-                    </div>
-                    <p className="font-semibold text-gray-800 text-lg">
-                      {RESPONSE_MESSAGES[submitted]}
-                    </p>
-                    <p className="text-gray-500 text-sm mt-2">
-                      תשובתך נרשמה בהצלחה
-                    </p>
-                  </div>
-                  {data.respondedAt && (
-                    <p className="text-xs text-gray-400">
-                      נענה ב-{new Date(data.respondedAt).toLocaleDateString('he-IL')}
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <div className="flex justify-center">
-                  <RSVPButtons token={token!} onSuccess={setSubmitted} />
-                </div>
-              )}
-            </>
-          ) : null}
-        </div>
-
-        {/* Footer */}
-        <p className="text-center text-xs text-rose-300 mt-6">
-          עם אהבה ✨ {data?.coupleNames}
-        </p>
-      </div>
-    </div>
+      <footer className={s.footer}>
+        <p className={s.footerText}>עם אהבה ✨ {data?.coupleNames}</p>
+      </footer>
+    </main>
   );
 };

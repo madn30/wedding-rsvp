@@ -2,14 +2,16 @@ import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Spinner } from '../components/ui';
+import s from './LoginPage.module.css';
 
 export const LoginPage = () => {
-  const [email, setEmail] = useState('');
+  const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError]       = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
-  const navigate = useNavigate();
+
+  const { login }  = useAuth();
+  const navigate   = useNavigate();
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -20,8 +22,8 @@ export const LoginPage = () => {
       navigate('/admin/dashboard');
     } catch (err: unknown) {
       const msg =
-        (err as { response?: { data?: { message?: string } } })?.response?.data
-          ?.message || 'שגיאה בהתחברות';
+        (err as { response?: { data?: { message?: string } } })
+          ?.response?.data?.message || 'שגיאה בהתחברות. בדוק אימייל וסיסמה.';
       setError(msg);
     } finally {
       setIsLoading(false);
@@ -29,66 +31,58 @@ export const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-rose-50 via-pink-50 to-amber-50 p-4">
-      {/* Decorative circles */}
-      <div className="absolute top-20 right-20 w-64 h-64 bg-rose-200/30 rounded-full blur-3xl" />
-      <div className="absolute bottom-20 left-20 w-48 h-48 bg-gold-200/30 rounded-full blur-3xl" />
+    <main className={s.page}>
+      <section className={s.card}>
+        <header className={s.header}>
+          <span className={s.headerIcon} aria-hidden="true">💍</span>
+          <h1 className={s.title}>כניסת מנהל</h1>
+          <p className={s.subtitle}>ניהול הזמנות לחתונה</p>
+        </header>
 
-      <div className="relative glass-card w-full max-w-md p-8 animate-slide-up">
-        <div className="text-center mb-8">
-          <div className="text-5xl mb-3">💍</div>
-          <h1 className="font-serif text-3xl font-bold text-gray-800">כניסת מנהל</h1>
-          <p className="text-gray-500 mt-1 text-sm">ניהול הזמנות לחתונה</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              אימייל
-            </label>
+        <form onSubmit={handleSubmit} className={s.form} noValidate>
+          <div className={s.field}>
+            <label htmlFor="email" className={s.label}>אימייל</label>
             <input
+              id="email"
               type="email"
-              className="input-field"
+              className={s.input}
               placeholder="admin@wedding.com"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={e => setEmail(e.target.value)}
               dir="ltr"
               required
               autoComplete="email"
+              autoFocus
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              סיסמה
-            </label>
+          <div className={s.field}>
+            <label htmlFor="password" className={s.label}>סיסמה</label>
             <input
+              id="password"
               type="password"
-              className="input-field"
+              className={s.input}
               placeholder="••••••••"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={e => setPassword(e.target.value)}
               required
               autoComplete="current-password"
             />
           </div>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl p-3 text-sm text-center">
+            <p className={s.errorBox} role="alert">
+              <span aria-hidden="true">⚠️</span>
               {error}
-            </div>
+            </p>
           )}
 
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="btn-primary w-full flex items-center justify-center gap-2 text-base"
-          >
-            {isLoading ? <Spinner size="sm" /> : '🔑'}
+          <button type="submit" disabled={isLoading} className={s.submitBtn}>
+            {isLoading ? <Spinner size="sm" /> : <span aria-hidden="true">🔑</span>}
             {isLoading ? 'מתחבר...' : 'כניסה'}
           </button>
         </form>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 };

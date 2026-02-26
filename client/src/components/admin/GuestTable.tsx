@@ -3,6 +3,7 @@ import { Guest, MessageChannel } from '../../types';
 import { ResponseBadge, Spinner } from '../ui';
 import { sendInvitation, deleteGuest } from '../../services/guestService';
 import toast from 'react-hot-toast';
+import s from './GuestTable.module.css';
 
 interface GuestTableProps {
   guests: Guest[];
@@ -19,8 +20,9 @@ export const GuestTable = ({ guests, onRefresh }: GuestTableProps) => {
       toast.success(`הזמנה נשלחה ל${guest.name} 📨`);
       onRefresh();
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })
-        ?.response?.data?.message || 'שגיאה בשליחה';
+      const msg =
+        (err as { response?: { data?: { message?: string } } })
+          ?.response?.data?.message || 'שגיאה בשליחה';
       toast.error(msg);
     } finally {
       setLoadingId(null);
@@ -40,88 +42,82 @@ export const GuestTable = ({ guests, onRefresh }: GuestTableProps) => {
 
   if (guests.length === 0) {
     return (
-      <div className="text-center py-16 text-gray-400">
-        <p className="text-4xl mb-2">👥</p>
-        <p>לא נמצאו אורחים</p>
+      <div className={s.empty}>
+        <span className={s.emptyIcon}>👥</span>
+        <p className={s.emptyText}>לא נמצאו אורחים</p>
       </div>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-gray-100">
-      <table className="w-full text-sm">
-        <thead className="bg-gray-50 border-b border-gray-100">
+    <div className={s.wrapper}>
+      <table className={s.table}>
+        <thead className={s.thead}>
           <tr>
-            {['שם', 'טלפון', 'תשובה', 'הודעה', 'תאריך תשובה', 'פעולות'].map((h) => (
-              <th key={h} className="text-right px-4 py-3 font-medium text-gray-600">
-                {h}
-              </th>
+            {['שם', 'טלפון', 'תשובה', 'הודעה', 'תאריך תשובה', 'פעולות'].map(h => (
+              <th key={h} className={s.th}>{h}</th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-50">
-          {guests.map((guest) => (
-            <tr key={guest._id} className="hover:bg-rose-50/30 transition-colors">
-              <td className="px-4 py-3 font-medium text-gray-800">{guest.name}</td>
-              <td className="px-4 py-3 text-gray-600 font-mono text-xs" dir="ltr">
+        <tbody>
+          {guests.map(guest => (
+            <tr key={guest._id} className={s.tr}>
+              <td className={`${s.td} ${s.tdName}`} data-label="שם">
+                {guest.name}
+              </td>
+              <td className={`${s.td} ${s.tdPhone}`} data-label="טלפון">
                 {guest.phone}
               </td>
-              <td className="px-4 py-3">
+              <td className={s.td} data-label="תשובה">
                 <ResponseBadge response={guest.response} />
               </td>
-              <td className="px-4 py-3">
+              <td className={s.td} data-label="הודעה">
                 {guest.messageSent ? (
-                  <span className="text-xs text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
+                  <span className={`${s.msgChip} ${s.msgSent}`}>
                     {guest.messageChannel === 'whatsapp' ? '📱 WhatsApp' : '📨 SMS'}
                   </span>
                 ) : (
-                  <span className="text-xs text-gray-400">לא נשלח</span>
+                  <span className={`${s.msgChip} ${s.msgUnsent}`}>לא נשלח</span>
                 )}
               </td>
-              <td className="px-4 py-3 text-gray-500 text-xs">
+              <td className={s.td} data-label="תאריך תשובה">
                 {guest.respondedAt
                   ? new Date(guest.respondedAt).toLocaleDateString('he-IL')
                   : '—'}
               </td>
-              <td className="px-4 py-3">
-                <div className="flex items-center gap-2">
-                  {loadingId === guest._id ? (
-                    <Spinner size="sm" />
-                  ) : (
-                    <>
-                      <button
-                        onClick={() => handleSend(guest, 'sms')}
-                        title="שלח SMS"
-                        className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-500 transition-colors"
-                      >
-                        📨
-                      </button>
-                      <button
-                        onClick={() => handleSend(guest, 'whatsapp')}
-                        title="שלח WhatsApp"
-                        className="p-1.5 rounded-lg hover:bg-green-50 text-green-500 transition-colors"
-                      >
-                        📱
-                      </button>
-                      <a
-                        href={`/rsvp/${guest.token}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        title="צפה בלינק"
-                        className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"
-                      >
-                        🔗
-                      </a>
-                      <button
-                        onClick={() => handleDelete(guest)}
-                        title="מחק"
-                        className="p-1.5 rounded-lg hover:bg-red-50 text-red-400 transition-colors"
-                      >
-                        🗑️
-                      </button>
-                    </>
-                  )}
-                </div>
+              <td className={s.td} data-label="פעולות">
+                {loadingId === guest._id ? (
+                  <Spinner size="sm" />
+                ) : (
+                  <div className={s.actions}>
+                    <button
+                      className={`${s.actionBtn} ${s.actionWhatsapp}`}
+                      onClick={() => handleSend(guest, 'whatsapp')}
+                      title="שלח WhatsApp"
+                      aria-label={`שלח WhatsApp ל${guest.name}`}
+                    >📱</button>
+                    <button
+                      className={`${s.actionBtn} ${s.actionSms}`}
+                      onClick={() => handleSend(guest, 'sms')}
+                      title="שלח SMS"
+                      aria-label={`שלח SMS ל${guest.name}`}
+                    >📨</button>
+                    <a
+                      href={`/rsvp/${guest.token}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={`${s.actionBtn} ${s.actionLink}`}
+                      title="פתח לינק RSVP"
+                      aria-label={`לינק RSVP של ${guest.name}`}
+                    >🔗</a>
+                    <button
+                      className={`${s.actionBtn} ${s.actionDelete}`}
+                      onClick={() => handleDelete(guest)}
+                      title="מחק"
+                      aria-label={`מחק את ${guest.name}`}
+                    >🗑️</button>
+                  </div>
+                )}
               </td>
             </tr>
           ))}

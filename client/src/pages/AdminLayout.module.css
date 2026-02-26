@@ -1,0 +1,78 @@
+/* ── Root shell ────────────────────────────────────────── */
+.layout {
+  display: flex;
+  min-height: 100dvh;
+  background: linear-gradient(160deg, var(--clr-primary-subtle) 0%, #fdf2f8 40%, var(--clr-gold-subtle) 100%);
+}
+
+/* ── Mobile topbar ─────────────────────────────────────── */
+.topbar {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  height: var(--topbar-h);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--clr-border-light);
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--sp-4);
+  box-shadow: var(--shadow-xs);
+}
+
+.topbarBrand {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-family: var(--font-serif);
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  color: var(--clr-text);
+}
+
+.hamburger {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border-radius: var(--radius-md);
+  transition: background var(--ease-fast);
+}
+
+.hamburger:hover { background: var(--clr-surface-subtle); }
+
+.bar {
+  width: 22px;
+  height: 2px;
+  background: var(--clr-text);
+  border-radius: 2px;
+  transition: transform var(--ease-base), opacity var(--ease-base);
+}
+
+/* ── Main content ──────────────────────────────────────── */
+.main {
+  flex: 1;
+  padding: var(--sp-8);
+  overflow: auto;
+  min-width: 0;
+}
+
+/* ── Responsive ────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .topbar { display: flex; }
+
+  .main {
+    padding: calc(var(--topbar-h) + var(--sp-5)) var(--sp-4) var(--sp-6);
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .main { padding: var(--sp-6); }
+}
