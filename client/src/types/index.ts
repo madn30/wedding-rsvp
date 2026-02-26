@@ -16,6 +16,7 @@ export interface Guest {
   messageSent: boolean;
   messageChannel: MessageChannel | null;
   messageSentAt: string | null;
+  whatsappReplied: boolean;
   createdAt: string;
   updatedAt: string;
 }

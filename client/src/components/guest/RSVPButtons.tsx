@@ -46,7 +46,7 @@ export const RSVPButtons = ({ token, onSuccess }: RSVPButtonsProps) => {
   const handleResponse = async (response: NonNullable<RSVPResponse>) => {
     setIsLoading(response);
     try {
-      // await submitRSVP(token, response);
+      await submitRSVP(token, { response });
       onSuccess(response);
       toast.success('תשובתך נרשמה! 🎉');
     } catch (err: unknown) {

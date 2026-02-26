@@ -37,17 +37,22 @@ export const sendInvitation = async (
 
 export const exportCSV = (): void => {
   const token = localStorage.getItem('admin_token');
-  const url = `/api/guests/export`;
-  const a = document.createElement('a');
-  a.href = url;
-  a.setAttribute('download', 'guests.csv');
-  // Add auth header via fetch
+  // Must use the full API origin — client and server are on separate Render domains
+  const baseUrl = (import.meta.env.VITE_API_URL as string) || 'http://localhost:5000/api';
+  const url = `${baseUrl}/guests/export`;
+
   fetch(url, { headers: { Authorization: `Bearer ${token}` } })
-    .then((res) => res.blob())
+    .then((res) => {
+      if (!res.ok) throw new Error(`Export failed: ${res.status}`);
+      return res.blob();
+    })
     .then((blob) => {
       const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
       a.href = blobUrl;
+      a.download = 'guests.csv';
       a.click();
       window.URL.revokeObjectURL(blobUrl);
-    });
+    })
+    .catch((err) => console.error('CSV export error:', err));
 };
