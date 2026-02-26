@@ -1,72 +1,61 @@
 import { ReactNode } from 'react';
 import { RSVPResponse } from '../../types';
+import s from './ui.module.css';
 
-// ── Spinner ──────────────────────────────────────────────
-export const Spinner = ({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) => {
-  const sizes = { sm: 'w-4 h-4', md: 'w-8 h-8', lg: 'w-12 h-12' };
-  return (
-    <div
-      className={`${sizes[size]} border-4 border-rose-200 border-t-rose-500 rounded-full animate-spin`}
-    />
-  );
+// ── Spinner ──────────────────────────────────────────────────────────────────
+interface SpinnerProps { size?: 'sm' | 'md' | 'lg'; }
+
+export const Spinner = ({ size = 'md' }: SpinnerProps) => {
+  const sizeClass = size === 'sm' ? s.spinnerSm : size === 'lg' ? s.spinnerLg : s.spinnerMd;
+  return <span className={`${s.spinner} ${sizeClass}`} role="status" aria-label="טוען" />;
 };
 
-// ── FullPageLoader ────────────────────────────────────────
+// ── FullPageLoader ────────────────────────────────────────────────────────────
 export const FullPageLoader = () => (
-  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-rose-50 to-pink-50">
-    <div className="flex flex-col items-center gap-4">
+  <div className={s.fullPageLoader}>
+    <div className={s.loaderContent}>
       <Spinner size="lg" />
-      <p className="text-rose-400 font-medium">טוען...</p>
+      <p className={s.loaderText}>טוען...</p>
     </div>
   </div>
 );
 
-// ── Badge ─────────────────────────────────────────────────
-interface BadgeProps {
-  response: RSVPResponse;
-}
+// ── ResponseBadge ─────────────────────────────────────────────────────────────
+interface BadgeProps { response: RSVPResponse; }
 
-const RESPONSE_CONFIG: Record<
-  NonNullable<RSVPResponse> | 'pending',
-  { label: string; className: string }
-> = {
-  yes: { label: 'מגיע ✅', className: 'bg-emerald-100 text-emerald-700' },
-  no: { label: 'לא מגיע ❌', className: 'bg-red-100 text-red-700' },
-  maybe: { label: 'אולי 🤔', className: 'bg-amber-100 text-amber-700' },
-  pending: { label: 'ממתין ⏳', className: 'bg-gray-100 text-gray-600' },
+const BADGE_CONFIG: Record<NonNullable<RSVPResponse> | 'pending', { label: string; cls: string }> = {
+  yes:     { label: 'מגיע',      cls: s.badgeYes },
+  no:      { label: 'לא מגיע',   cls: s.badgeNo },
+  maybe:   { label: 'אולי',      cls: s.badgeMaybe },
+  pending: { label: 'ממתין',     cls: s.badgePending },
 };
 
 export const ResponseBadge = ({ response }: BadgeProps) => {
-  const key = response ?? 'pending';
-  const config = RESPONSE_CONFIG[key];
-  return (
-    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${config.className}`}>
-      {config.label}
-    </span>
-  );
+  const { label, cls } = BADGE_CONFIG[response ?? 'pending'];
+  return <span className={`${s.badge} ${cls}`}>{label}</span>;
 };
 
-// ── StatCard ──────────────────────────────────────────────
+// ── StatCard ──────────────────────────────────────────────────────────────────
 interface StatCardProps {
   title: string;
   value: number | string;
   icon: string;
-  color: string;
+  accentColor: string;
   subtitle?: string;
 }
 
-export const StatCard = ({ title, value, icon, color, subtitle }: StatCardProps) => (
-  <div className={`stat-card border-r-4 ${color}`}>
-    <div className="flex items-center justify-between">
-      <span className="text-2xl">{icon}</span>
-      <span className="text-3xl font-bold text-gray-800">{value}</span>
+export const StatCard = ({ title, value, icon, accentColor, subtitle }: StatCardProps) => (
+  <article className={s.statCard} style={{ borderRightColor: accentColor }}>
+    <div className={s.statCardTop}>
+      <span className={s.statCardIcon} aria-hidden="true">{icon}</span>
+      <strong className={s.statCardValue}>{value}</strong>
     </div>
-    <p className="text-gray-600 font-medium text-sm">{title}</p>
-    {subtitle && <p className="text-gray-400 text-xs">{subtitle}</p>}
-  </div>
+    <p className={s.statCardTitle}>{title}</p>
+    {subtitle && <p className={s.statCardSub}>{subtitle}</p>}
+  </article>
 );
 
-// ── Modal ─────────────────────────────────────────────────
+// ── Modal ─────────────────────────────────────────────────────────────────────
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -76,23 +65,31 @@ interface ModalProps {
 
 export const Modal = ({ isOpen, onClose, title, children }: ModalProps) => {
   if (!isOpen) return null;
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') onClose();
+  };
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className={s.overlay}
       onClick={onClose}
+      onKeyDown={handleKeyDown}
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
     >
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-      <div
-        className="relative glass-card w-full max-w-md p-6 animate-slide-up"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          onClick={onClose}
-          className="absolute top-4 left-4 text-gray-400 hover:text-gray-600 text-xl"
-        >
-          ✕
-        </button>
-        <h2 className="text-xl font-serif font-semibold text-gray-800 mb-4">{title}</h2>
+      <div className={s.modalPanel} onClick={e => e.stopPropagation()}>
+        <div className={s.modalHeader}>
+          <h2 className={s.modalTitle}>{title}</h2>
+          <button
+            className={s.modalClose}
+            onClick={onClose}
+            aria-label="סגור"
+          >
+            ✕
+          </button>
+        </div>
         {children}
       </div>
     </div>

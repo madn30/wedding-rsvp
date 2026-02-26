@@ -1,103 +1,94 @@
 import { useStats } from '../hooks';
 import { StatCard, FullPageLoader } from '../components/ui';
 import {
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
+  PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
 } from 'recharts';
+import s from './DashboardPage.module.css';
 
-const COLORS = ['#10b981', '#f43f5e', '#f59e0b', '#94a3b8'];
+const PIE_COLORS  = ['#059669', '#dc2626', '#f59e0b', '#94a3b8'];
+const STAT_COLORS = ['#3b82f6', '#059669', '#dc2626', '#8b5cf6'];
 
 export const DashboardPage = () => {
   const { stats, isLoading } = useStats();
 
   if (isLoading) return <FullPageLoader />;
-  if (!stats) return null;
+  if (!stats)    return null;
 
   const pieData = [
-    { name: 'מגיע', value: stats.yes },
-    { name: 'לא מגיע', value: stats.no },
-    { name: 'אולי', value: stats.maybe },
-    { name: 'ממתין', value: stats.pending },
-  ].filter((d) => d.value > 0);
+    { name: 'מגיע',     value: stats.yes     },
+    { name: 'לא מגיע', value: stats.no      },
+    { name: 'אולי',     value: stats.maybe   },
+    { name: 'ממתין',    value: stats.pending },
+  ].filter(d => d.value > 0);
 
   const barData = [
-    { name: 'מגיע', value: stats.yes, fill: '#10b981' },
-    { name: 'לא מגיע', value: stats.no, fill: '#f43f5e' },
-    { name: 'אולי', value: stats.maybe, fill: '#f59e0b' },
-    { name: 'ממתין', value: stats.pending, fill: '#94a3b8' },
+    { name: 'מגיע',     value: stats.yes,     fill: '#059669' },
+    { name: 'לא מגיע', value: stats.no,      fill: '#dc2626' },
+    { name: 'אולי',     value: stats.maybe,   fill: '#f59e0b' },
+    { name: 'ממתין',    value: stats.pending, fill: '#94a3b8' },
   ];
 
-  return (
-    <div className="space-y-8 animate-fade-in">
-      <div>
-        <h1 className="font-serif text-3xl font-bold text-gray-800">לוח בקרה</h1>
-        <p className="text-gray-500 mt-1">סקירה כללית של ההזמנות</p>
-      </div>
+  const attendPct = stats.total > 0
+    ? Math.round((stats.yes / stats.total) * 100)
+    : 0;
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+  return (
+    <div className={s.page}>
+      <hgroup className={s.heading}>
+        <h1 className={s.title}>לוח בקרה</h1>
+        <p className={s.subtitle}>סקירה כללית של ההזמנות</p>
+      </hgroup>
+
+      {/* Stats */}
+      <section aria-label="סטטיסטיקות" className={s.statsGrid}>
         <StatCard
           title="סה״כ מוזמנים"
           value={stats.total}
           icon="👥"
-          color="border-blue-400"
+          accentColor={STAT_COLORS[0]}
           subtitle={`${stats.messageSent} הודעות נשלחו`}
         />
         <StatCard
           title="מגיעים"
           value={stats.yes}
           icon="✅"
-          color="border-emerald-400"
-          subtitle={`${stats.total > 0 ? Math.round((stats.yes / stats.total) * 100) : 0}% מהמוזמנים`}
+          accentColor={STAT_COLORS[1]}
+          subtitle={`${attendPct}% מהמוזמנים`}
         />
         <StatCard
           title="לא מגיעים"
           value={stats.no}
           icon="❌"
-          color="border-red-400"
+          accentColor={STAT_COLORS[2]}
         />
         <StatCard
           title="שיעור מענה"
           value={`${stats.responseRate}%`}
           icon="📊"
-          color="border-purple-400"
+          accentColor={STAT_COLORS[3]}
           subtitle={`${stats.maybe} אולי`}
         />
-      </div>
+      </section>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Pie Chart */}
-        <div className="glass-card p-6">
-          <h2 className="font-serif text-xl font-semibold text-gray-700 mb-4">
-            התפלגות תשובות
-          </h2>
+      <section aria-label="גרפים" className={s.chartsGrid}>
+        <article className={s.chartCard}>
+          <h2 className={s.chartTitle}>התפלגות תשובות</h2>
           {pieData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={280}>
+            <ResponsiveContainer width="100%" height={260}>
               <PieChart>
                 <Pie
                   data={pieData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={70}
-                  outerRadius={110}
+                  cx="50%" cy="50%"
+                  innerRadius={65} outerRadius={105}
                   paddingAngle={4}
                   dataKey="value"
-                  label={({ name, percent }) =>
-                    `${name} ${(percent * 100).toFixed(0)}%`
-                  }
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  labelLine={false}
                 >
                   {pieData.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                    <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                   ))}
                 </Pie>
                 <Tooltip />
@@ -105,23 +96,20 @@ export const DashboardPage = () => {
               </PieChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex items-center justify-center h-64 text-gray-400">
-              אין נתונים להצגה עדיין
-            </div>
+            <p className={s.chartEmpty}>אין נתונים להצגה עדיין</p>
           )}
-        </div>
+        </article>
 
-        {/* Bar Chart */}
-        <div className="glass-card p-6">
-          <h2 className="font-serif text-xl font-semibold text-gray-700 mb-4">
-            סיכום תשובות
-          </h2>
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={barData} barSize={40}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-              <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-              <Tooltip />
+        <article className={s.chartCard}>
+          <h2 className={s.chartTitle}>סיכום תשובות</h2>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={barData} barSize={36}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+              <XAxis dataKey="name" tick={{ fontSize: 12, fontFamily: 'Inter' }} axisLine={false} tickLine={false} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 12, fontFamily: 'Inter' }} axisLine={false} tickLine={false} />
+              <Tooltip
+                contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)', fontFamily: 'Inter' }}
+              />
               <Bar dataKey="value" radius={[6, 6, 0, 0]}>
                 {barData.map((entry, i) => (
                   <Cell key={i} fill={entry.fill} />
@@ -129,27 +117,23 @@ export const DashboardPage = () => {
               </Bar>
             </BarChart>
           </ResponsiveContainer>
-        </div>
-      </div>
+        </article>
+      </section>
 
-      {/* Progress Bar */}
-      <div className="glass-card p-6">
-        <div className="flex justify-between items-center mb-3">
-          <h2 className="font-serif text-xl font-semibold text-gray-700">
-            התקדמות מענה
-          </h2>
-          <span className="text-rose-500 font-bold">{stats.responseRate}%</span>
+      {/* Progress */}
+      <section aria-label="התקדמות" className={s.progressCard}>
+        <div className={s.progressHeader}>
+          <h2 className={s.progressTitle}>התקדמות מענה</h2>
+          <span className={s.progressPct}>{stats.responseRate}%</span>
         </div>
-        <div className="h-4 bg-gray-100 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-gradient-to-r from-rose-400 to-pink-500 rounded-full transition-all duration-700"
-            style={{ width: `${stats.responseRate}%` }}
-          />
+        <div className={s.progressTrack} role="progressbar"
+          aria-valuenow={stats.responseRate} aria-valuemin={0} aria-valuemax={100}>
+          <div className={s.progressFill} style={{ width: `${stats.responseRate}%` }} />
         </div>
-        <p className="text-sm text-gray-500 mt-2">
+        <p className={s.progressSub}>
           {stats.yes + stats.no + stats.maybe} מתוך {stats.total} ענו
         </p>
-      </div>
+      </section>
     </div>
   );
 };
