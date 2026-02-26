@@ -17,6 +17,10 @@ import whatsappRoutes from './routes/whatsappRoutes';
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Required for correct IP/protocol detection behind Render.com's reverse proxy.
+// Needed so Twilio signature validation reconstructs the correct HTTPS URL.
+app.set('trust proxy', 1);
+
 // 1. CORS MUST BE FIRST - Before helmet and rate limiting
 app.use(cors({
   origin: 'https://wedding-rsvp-9d1c.onrender.com', // Verified URL
@@ -59,7 +63,7 @@ app.use('/api/admin', authRoutes);
 app.use('/api/guests', guestRoutes);
 app.use('/api/rsvp', rsvpRoutes);
 app.use('/api/stats', statsRoutes);
-app.use('/api/v1/whatsapp', whatsappRoutes);
+app.use('/api/whatsapp', whatsappRoutes);
 
 // 7. 404 & Error Handling
 app.use((_req, res) => {

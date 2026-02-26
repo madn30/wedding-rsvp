@@ -105,6 +105,7 @@ export const sendInvitation = asyncHandler(
       name: guest.name,
       rsvpLink,
       channel,
+      hasReplied: channel === 'whatsapp' ? guest.whatsappReplied : undefined,
     });
 
     guest.messageSent = true;
