@@ -14,8 +14,8 @@ import {
   sendWhatsAppMessage,
   randomDelay,
   formatToWhatsAppId,
-} from '../utils/whatsapp';
-import { normalizeIsraeliPhone } from '../services/twilioService';
+} from '../whatsapp';
+import { normalizeIsraeliPhone } from '../services/messagingService';
 
 // ── POST /api/send-invitation ─────────────────────────────────────────────────
 /**
