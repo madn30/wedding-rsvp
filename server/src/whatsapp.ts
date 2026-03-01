@@ -43,6 +43,8 @@ export const initWhatsAppClient = (): void => {
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
         '--disable-gpu',
+        '--single-process',        // ← add this
+        '--no-zygote',             // ← add this
       ],
     },
   });
