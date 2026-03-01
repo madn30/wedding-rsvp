@@ -95,10 +95,17 @@ export const initWhatsAppClient = (): void => {
     }
   });
 
-  client.initialize().catch(err => {
-    console.error('[WhatsApp] Failed to initialize client:', err);
+  // initialize() returns a Promise — attach a .catch() so an unhandled rejection
+  // (e.g. Chrome not found on the host) never kills the Node process.
+  client.initialize().catch((err: Error) => {
+    console.error('[WhatsApp] Failed to launch browser:', err.message);
+    console.warn(
+      '[WhatsApp] Server will continue without WhatsApp support. ' +
+      'To enable it locally, set WHATSAPP_ENABLED=true and ensure Chrome/Chromium is installed.'
+    );
+    ready = false;
+    client = null;
   });
-  
   console.log('[WhatsApp] Client initialising — waiting for QR scan or cached session…');
 };
 
