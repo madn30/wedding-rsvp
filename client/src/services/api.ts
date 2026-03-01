@@ -2,9 +2,13 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+  // וודא שב-Render ה-VITE_API_URL מעודכן לכתובת ה-ngrok הקבועה שלך
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5001/api', 
   timeout: 15000,
-  headers: { 'Content-Type': 'application/json' },
+  headers: { 
+    'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': 'true'
+  },
 });
 
 // Request interceptor — attach JWT
@@ -34,6 +38,7 @@ api.interceptors.response.use(
       }
     }
 
+    // מניעת הודעות שגיאה כפולות במקרים ספציפיים
     if (status !== 409 && status !== 404) {
       toast.error(message);
     }

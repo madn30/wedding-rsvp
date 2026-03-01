@@ -24,7 +24,8 @@ app.set('trust proxy', 1);
 
 // 1. CORS MUST BE FIRST - Before helmet and rate limiting
 app.use(cors({
-  origin: 'https://wedding-rsvp-9d1c.onrender.com', // Verified URL
+  // origin: 'https://wedding-rsvp-9d1c.onrender.com', // Verified URL
+  origin: 'https://wedding-rsvp-9d1c.onrender.com',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
