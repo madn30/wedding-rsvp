@@ -1,88 +1,89 @@
-import twilio from 'twilio';
+/**
+ * twilioService.ts
+ * ──────────────────────────────────────────────────────────────────────────────
+ * Unified messaging service.
+ *
+ * • WhatsApp  → routed through whatsapp-web.js (local eSIM, no Twilio needed)
+ * • SMS       → still routed through Twilio (requires TWILIO_* env vars)
+ *
+ * The exported interface (`sendSMS`, `normalizeIsraeliPhone`, `MessageChannel`)
+ * is unchanged so guestController.ts requires no modification.
+ */
 
-const client = twilio(
+import twilio from 'twilio';
+import { sendWhatsAppMessage } from '../utils/whatsapp';
+
+// ── Twilio client (SMS only) ───────────────────────────────────────────────────
+
+const twilioClient = twilio(
   process.env.TWILIO_ACCOUNT_SID,
   process.env.TWILIO_AUTH_TOKEN
 );
 
+// ── Types ─────────────────────────────────────────────────────────────────────
+
 export type MessageChannel = 'sms' | 'whatsapp';
 
 interface SendMessageOptions {
-  to: string;
+  to: string;       // E.164 format, e.g. +972501234567
   name: string;
   rsvpLink: string;
   channel: MessageChannel;
-  hasReplied?: boolean; // true = guest already messaged us → free-text allowed
+  hasReplied?: boolean; // kept for API compatibility (no longer used for WhatsApp)
 }
+
+// ── Message builder ───────────────────────────────────────────────────────────
 
 const buildMessage = (name: string, rsvpLink: string): string => {
   const coupleNames = process.env.COUPLE_NAMES || 'החתן והכלה';
   const weddingDate = process.env.WEDDING_DATE || '';
   const dateText = weddingDate ? ` בתאריך ${weddingDate}` : '';
   return (
-    `שלום ${name}! 💍\n` +
-    `נשמח לראותך בחתונה של ${coupleNames}${dateText}.\n` +
-    `אנא אשר הגעתך בלינק:\n${rsvpLink}`
+    `היי ${name}, אנחנו מזמינים אתכם לחתונה של ${coupleNames}${dateText}!\n` +
+    `אנא אשרו הגעה כאן:\n${rsvpLink}`
   );
 };
 
+// ── Main send function ────────────────────────────────────────────────────────
+
+/**
+ * Send an invitation via WhatsApp (local eSIM) or SMS (Twilio).
+ * Returns a message identifier string on success.
+ */
 export const sendSMS = async (options: SendMessageOptions): Promise<string> => {
-  const { to, name, rsvpLink, channel, hasReplied = false } = options;
+  const { to, name, rsvpLink, channel } = options;
 
-  const from =
-    channel === 'whatsapp'
-      ? process.env.TWILIO_WHATSAPP_NUMBER // whatsapp:+972535666298
-      : process.env.TWILIO_PHONE_NUMBER;
+  const message = buildMessage(name, rsvpLink);
 
-  const toNumber = channel === 'whatsapp' ? `whatsapp:${to}` : to;
-
-  const messagePayload: Record<string, unknown> = { from, to: toNumber };
-
+  // ── WhatsApp path: uses whatsapp-web.js (local eSIM) ─────────────────────
   if (channel === 'whatsapp') {
-    if (hasReplied) {
-      // Guest already messaged us → 24-hour free-text window is open
-      messagePayload.body = buildMessage(name, rsvpLink);
-    } else {
-      // First outbound message → MUST use an approved WhatsApp template
-      const templateSid = process.env.TWILIO_WHATSAPP_TEMPLATE_SID;
-      if (!templateSid || templateSid.startsWith('HXxxx')) {
-        throw new Error(
-          'TWILIO_WHATSAPP_TEMPLATE_SID is not set. ' +
-          'Create an approved template in Twilio Console and set its ContentSid.'
-        );
-      }
-      messagePayload.contentSid = templateSid;
-      messagePayload.contentVariables = JSON.stringify({
-        1: name,
-        2: rsvpLink,
-      });
-    }
-  } else {
-    // SMS — always free text
-    messagePayload.body = buildMessage(name, rsvpLink);
+    await sendWhatsAppMessage(to, message);
+    return `whatsapp:${to}`; // no SID — return the recipient as the identifier
   }
 
+  // ── SMS path: uses Twilio ─────────────────────────────────────────────────
   try {
-    const message = await client.messages.create(messagePayload as any);
-    return message.sid;
+    const result = await twilioClient.messages.create({
+      from: process.env.TWILIO_PHONE_NUMBER,
+      to,
+      body: message,
+    });
+    return result.sid;
   } catch (err: any) {
-    // Surface actionable Twilio error codes
-    const code: number = err.code;
-    if (code === 63016) {
-      throw new Error('WhatsApp: template not approved or ContentSid is wrong.');
+    if (err.code === 21211) {
+      throw new Error(`SMS: invalid phone number format: ${to}`);
     }
-    if (code === 63032 || code === 63003) {
-      throw new Error('WhatsApp: recipient has not opted-in or number is blocked.');
-    }
-    if (code === 21211) {
-      throw new Error(`WhatsApp: invalid "to" number format: ${toNumber}`);
-    }
-    throw err; // re-throw unknown errors
+    throw err;
   }
 };
 
+// ── Phone normalisation ───────────────────────────────────────────────────────
+
+/**
+ * Normalises an Israeli phone number to E.164 format (+972XXXXXXXXX).
+ * Accepts: 0501234567, 501234567, 972501234567, +972501234567
+ */
 export const normalizeIsraeliPhone = (phone: string): string => {
-  // Strip everything except digits
   const digits = phone.replace(/\D/g, '');
 
   if (digits.startsWith('972') && digits.length === 12) return `+${digits}`;

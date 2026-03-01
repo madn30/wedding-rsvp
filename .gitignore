@@ -1,5 +1,9 @@
 # Node modules
 node_modules/
+
+# WhatsApp session credentials — contains your eSIM auth tokens, NEVER commit
+.wwebjs_auth/
+.wwebjs_cache/
 client/node_modules/
 server/node_modules/
 
