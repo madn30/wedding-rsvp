@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Guest, MessageChannel } from '../../types';
+import { Guest } from '../../types';
 import { ResponseBadge, Spinner } from '../ui';
-import { sendInvitation, deleteGuest } from '../../services/guestService';
+import { sendWhatsAppInvitation, deleteGuest } from '../../services/guestService';
 import toast from 'react-hot-toast';
 import s from './GuestTable.module.css';
 
@@ -13,16 +13,16 @@ interface GuestTableProps {
 export const GuestTable = ({ guests, onRefresh }: GuestTableProps) => {
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
-  const handleSend = async (guest: Guest, channel: MessageChannel) => {
+  const handleSend = async (guest: Guest) => {
     setLoadingId(guest._id);
     try {
-      await sendInvitation(guest._id, channel);
-      toast.success(`הזמנה נשלחה ל${guest.name} 📨`);
+      await sendWhatsAppInvitation(guest);
+      toast.success(`הזמנה נשלחה ל${guest.name} 📱`);
       onRefresh();
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { message?: string } } })
-          ?.response?.data?.message || 'שגיאה בשליחה';
+          ?.response?.data?.message || 'שגיאה בשליחת ההזמנה';
       toast.error(msg);
     } finally {
       setLoadingId(null);
@@ -74,7 +74,7 @@ export const GuestTable = ({ guests, onRefresh }: GuestTableProps) => {
               <td className={s.td} data-label="הודעה">
                 {guest.messageSent ? (
                   <span className={`${s.msgChip} ${s.msgSent}`}>
-                    {guest.messageChannel === 'whatsapp' ? '📱 WhatsApp' : '📨 SMS'}
+                    📱 WhatsApp
                   </span>
                 ) : (
                   <span className={`${s.msgChip} ${s.msgUnsent}`}>לא נשלח</span>
@@ -92,16 +92,12 @@ export const GuestTable = ({ guests, onRefresh }: GuestTableProps) => {
                   <div className={s.actions}>
                     <button
                       className={`${s.actionBtn} ${s.actionWhatsapp}`}
-                      onClick={() => handleSend(guest, 'whatsapp')}
-                      title="שלח WhatsApp"
-                      aria-label={`שלח WhatsApp ל${guest.name}`}
-                    >📱</button>
-                    <button
-                      className={`${s.actionBtn} ${s.actionSms}`}
-                      onClick={() => handleSend(guest, 'sms')}
-                      title="שלח SMS"
-                      aria-label={`שלח SMS ל${guest.name}`}
-                    >📨</button>
+                      onClick={() => handleSend(guest)}
+                      title="שלח הזמנה ב-WhatsApp"
+                      aria-label={`שלח הזמנה ב-WhatsApp ל${guest.name}`}
+                    >
+                      📱
+                    </button>
                     <a
                       href={`/rsvp/${guest.token}`}
                       target="_blank"
@@ -109,13 +105,17 @@ export const GuestTable = ({ guests, onRefresh }: GuestTableProps) => {
                       className={`${s.actionBtn} ${s.actionLink}`}
                       title="פתח לינק RSVP"
                       aria-label={`לינק RSVP של ${guest.name}`}
-                    >🔗</a>
+                    >
+                      🔗
+                    </a>
                     <button
                       className={`${s.actionBtn} ${s.actionDelete}`}
                       onClick={() => handleDelete(guest)}
                       title="מחק"
                       aria-label={`מחק את ${guest.name}`}
-                    >🗑️</button>
+                    >
+                      🗑️
+                    </button>
                   </div>
                 )}
               </td>

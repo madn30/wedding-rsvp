@@ -2,10 +2,9 @@ import { Request, Response, NextFunction } from 'express';
 import { Guest } from '../models/Guest';
 import { AppError, asyncHandler, generateToken } from '../utils/helpers';
 import {
-  sendSMS,
+  sendInvite,
   normalizeIsraeliPhone,
-  MessageChannel,
-} from '../services/twilioService';
+} from '../services/messagingService';
 
 // GET /api/guests
 export const getGuests = asyncHandler(
@@ -89,10 +88,11 @@ export const deleteGuest = asyncHandler(
 );
 
 // POST /api/guests/:id/send
+// Sends a WhatsApp invitation and updates the guest record.
+// The React frontend now primarily uses POST /api/messages/send-invitation,
+// but this endpoint remains available for server-side / programmatic use.
 export const sendInvitation = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { channel } = req.body as { channel: MessageChannel };
-
     const guest = await Guest.findById(req.params.id);
     if (!guest) {
       return next(new AppError('Guest not found.', 404));
@@ -100,22 +100,20 @@ export const sendInvitation = asyncHandler(
 
     const rsvpLink = `${process.env.RSVP_BASE_URL}/rsvp/${guest.token}`;
 
-    await sendSMS({
+    await sendInvite({
       to: guest.phone,
       name: guest.name,
       rsvpLink,
-      channel,
-      hasReplied: channel === 'whatsapp' ? guest.whatsappReplied : undefined,
     });
 
     guest.messageSent = true;
-    guest.messageChannel = channel;
+    guest.messageChannel = 'whatsapp';
     guest.messageSentAt = new Date();
     await guest.save();
 
     res.status(200).json({
       success: true,
-      message: `Invitation sent via ${channel} to ${guest.name}.`,
+      message: `WhatsApp invitation sent to ${guest.name}.`,
       data: guest,
     });
   }

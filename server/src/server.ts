@@ -8,14 +8,13 @@ import http from 'http';
 
 import connectDB from './config/database';
 import { errorHandler } from './middlewares/errorHandler';
-import { initWhatsAppClient } from './utils/whatsapp';
-import { protect } from './middlewares/auth';
-import { sendInvitation } from './controllers/whatsappController';
+import { initWhatsAppClient } from './whatsapp';
 import authRoutes from './routes/authRoutes';
 import guestRoutes from './routes/guestRoutes';
 import rsvpRoutes from './routes/rsvpRoutes';
 import statsRoutes from './routes/statsRoutes';
 import whatsappRoutes from './routes/whatsappRoutes';
+import messageRoutes from './routes/messageRoutes';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -42,7 +41,7 @@ const globalLimiter = rateLimit({
   max: 300,
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => req.method === 'OPTIONS', // Important!
+  skip: (req) => req.method === 'OPTIONS',
 });
 app.use(globalLimiter);
 
@@ -65,11 +64,8 @@ app.use('/api/admin', authRoutes);
 app.use('/api/guests', guestRoutes);
 app.use('/api/rsvp', rsvpRoutes);
 app.use('/api/stats', statsRoutes);
-app.use('/api/whatsapp', whatsappRoutes);
-
-// POST /api/send-invitation — lightweight endpoint that sends a WhatsApp
-// invitation directly by phone + name (no guest DB record required).
-app.post('/api/send-invitation', protect, sendInvitation);
+app.use('/api/whatsapp', whatsappRoutes);   // GET /api/whatsapp/status
+app.use('/api/messages', messageRoutes);    // POST /api/messages/send-invitation
 
 // 7. 404 & Error Handling
 app.use((_req, res) => {
@@ -84,9 +80,14 @@ const start = async () => {
   try {
     await connectDB();
 
-    // Initialise WhatsApp client — prints QR to terminal on first run,
-    // then loads the cached session from .wwebjs_auth/ on subsequent starts.
-    initWhatsAppClient();
+    // whatsapp-web.js needs a local Chrome install and a physical device for
+    // QR scanning — it cannot run on Render or other cloud hosts.
+    // Enable locally by setting WHATSAPP_ENABLED=true in server/.env.
+    if (process.env.WHATSAPP_ENABLED === 'true') {
+      initWhatsAppClient();
+    } else {
+      console.log('[WhatsApp] Skipped — set WHATSAPP_ENABLED=true to enable locally.');
+    }
 
     server = app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
