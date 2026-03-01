@@ -8,6 +8,9 @@ import http from 'http';
 
 import connectDB from './config/database';
 import { errorHandler } from './middlewares/errorHandler';
+import { initWhatsAppClient } from './utils/whatsapp';
+import { protect } from './middlewares/auth';
+import { sendInvitation } from './controllers/whatsappController';
 import authRoutes from './routes/authRoutes';
 import guestRoutes from './routes/guestRoutes';
 import rsvpRoutes from './routes/rsvpRoutes';
@@ -18,7 +21,6 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Required for correct IP/protocol detection behind Render.com's reverse proxy.
-// Needed so Twilio signature validation reconstructs the correct HTTPS URL.
 app.set('trust proxy', 1);
 
 // 1. CORS MUST BE FIRST - Before helmet and rate limiting
@@ -65,6 +67,10 @@ app.use('/api/rsvp', rsvpRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
 
+// POST /api/send-invitation — lightweight endpoint that sends a WhatsApp
+// invitation directly by phone + name (no guest DB record required).
+app.post('/api/send-invitation', protect, sendInvitation);
+
 // 7. 404 & Error Handling
 app.use((_req, res) => {
   res.status(404).json({ success: false, message: 'Route not found.' });
@@ -77,6 +83,11 @@ let server: http.Server;
 const start = async () => {
   try {
     await connectDB();
+
+    // Initialise WhatsApp client — prints QR to terminal on first run,
+    // then loads the cached session from .wwebjs_auth/ on subsequent starts.
+    initWhatsAppClient();
+
     server = app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
     });
