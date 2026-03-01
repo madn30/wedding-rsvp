@@ -34,19 +34,21 @@ let ready = false;
 export const initWhatsAppClient = (): void => {
   if (client) return; // already initialised
 
-  client = new Client({
-    authStrategy: new LocalAuth({
-      dataPath: '.wwebjs_auth', // session persisted here — add to .gitignore!
-    }),
-    puppeteer: {
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage', // prevents crashes in limited-memory envs
-      ],
-    },
-  });
+client = new Client({
+  authStrategy: new LocalAuth({
+    dataPath: '.wwebjs_auth',
+  }),
+  puppeteer: {
+    headless: true,
+    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+    ],
+  },
+});
 
   // ── QR code ───────────────────────────────────────────────────────────────
   client.on('qr', (qr: string) => {
