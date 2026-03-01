@@ -53,6 +53,15 @@ export const sendWhatsAppInvitation = async (guest: Guest): Promise<void> => {
   });
 };
 
+export const getWhatsAppStatus = async (): Promise<boolean> => {
+  try {
+    const res = await api.get<{ success: boolean; data: { ready: boolean } }>('/whatsapp/status');
+    return res.data.data.ready;
+  } catch {
+    return false;
+  }
+};
+
 export const exportCSV = (): void => {
   const token = localStorage.getItem('admin_token');
   // Must use the full API origin — client and server are on separate Render domains

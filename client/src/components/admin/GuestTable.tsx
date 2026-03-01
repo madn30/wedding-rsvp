@@ -8,9 +8,10 @@ import s from './GuestTable.module.css';
 interface GuestTableProps {
   guests: Guest[];
   onRefresh: () => void;
+  whatsAppReady: boolean;
 }
 
-export const GuestTable = ({ guests, onRefresh }: GuestTableProps) => {
+export const GuestTable = ({ guests, onRefresh, whatsAppReady }: GuestTableProps) => {
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
   const handleSend = async (guest: Guest) => {
@@ -91,9 +92,10 @@ export const GuestTable = ({ guests, onRefresh }: GuestTableProps) => {
                 ) : (
                   <div className={s.actions}>
                     <button
-                      className={`${s.actionBtn} ${s.actionWhatsapp}`}
+                      className={`${s.actionBtn} ${s.actionWhatsapp} ${!whatsAppReady ? s.actionDisabled : ''}`}
                       onClick={() => handleSend(guest)}
-                      title="שלח הזמנה ב-WhatsApp"
+                      disabled={!whatsAppReady}
+                      title={whatsAppReady ? 'שלח הזמנה ב-WhatsApp' : 'WhatsApp לא מחובר'}
                       aria-label={`שלח הזמנה ב-WhatsApp ל${guest.name}`}
                     >
                       📱

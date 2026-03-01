@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useGuests } from '../hooks';
+import { useGuests, useWhatsAppStatus } from '../hooks';
 // useDebounce intentionally omitted — search triggers params inline
 import { GuestTable } from '../components/admin/GuestTable';
 import { AddGuestModal } from '../components/admin/AddGuestModal';
@@ -23,6 +23,7 @@ export const GuestsPage = () => {
   const { guests, pagination, isLoading, refetch, setParams } = useGuests({
     page: 1, limit: 20,
   });
+  const { whatsAppReady } = useWhatsAppStatus();
 
   const applyFilters = (newSearch: string, newFilter: string) => {
     setParams({
@@ -63,6 +64,15 @@ export const GuestsPage = () => {
         </div>
       </header>
 
+      {/* WhatsApp status banner */}
+      {whatsAppReady === false && (
+        <div className={s.waBanner} role="alert">
+          <span aria-hidden="true">⚠️</span>
+          WhatsApp לא מחובר — לא ניתן לשלוח הזמנות כרגע.
+          הפעל את השרת עם <code>WHATSAPP_ENABLED=true</code> וסרוק את קוד ה-QR בטרמינל.
+        </div>
+      )}
+
       {/* Filters */}
       <section aria-label="סינון">
         <div className={s.filterBar}>
@@ -94,7 +104,7 @@ export const GuestsPage = () => {
         {isLoading ? (
           <div className={s.spinnerWrap}><Spinner size="lg" /></div>
         ) : (
-          <GuestTable guests={guests} onRefresh={refetch} />
+          <GuestTable guests={guests} onRefresh={refetch} whatsAppReady={whatsAppReady ?? false} />
         )}
 
         {pagination && pagination.pages > 1 && (

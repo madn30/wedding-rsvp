@@ -34,7 +34,8 @@ api.interceptors.response.use(
       }
     }
 
-    if (status !== 409 && status !== 404) {
+    // 503 = WhatsApp not ready (shown via status banner); 409/404 are handled inline
+    if (status !== 409 && status !== 404 && status !== 503) {
       toast.error(message);
     }
 

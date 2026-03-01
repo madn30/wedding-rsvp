@@ -94,6 +94,12 @@
 .actionBtn:active   { transform: scale(0.95); }
 
 .actionWhatsapp:hover { background: #dcfce7; }
+
+.actionDisabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.actionDisabled:hover { transform: none; background: transparent; }
 .actionSms:hover      { background: #dbeafe; }
 .actionLink:hover     { background: var(--clr-surface-subtle); }
 .actionDelete:hover   { background: var(--clr-error-bg); }

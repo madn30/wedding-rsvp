@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Guest, Stats, PaginationMeta } from '../types';
-import { getGuests, GetGuestsParams } from '../services/guestService';
+import { getGuests, GetGuestsParams, getWhatsAppStatus } from '../services/guestService';
 import { getStats } from '../services/authService';
 
 export const useGuests = (initialParams: GetGuestsParams = {}) => {
@@ -42,6 +42,23 @@ export const useStats = () => {
   useEffect(() => { fetch(); }, [fetch]);
 
   return { stats, isLoading, refetch: fetch };
+};
+
+export const useWhatsAppStatus = () => {
+  const [whatsAppReady, setWhatsAppReady] = useState<boolean | null>(null);
+
+  const check = useCallback(async () => {
+    const ready = await getWhatsAppStatus();
+    setWhatsAppReady(ready);
+  }, []);
+
+  useEffect(() => {
+    check();
+    const interval = setInterval(check, 30_000);
+    return () => clearInterval(interval);
+  }, [check]);
+
+  return { whatsAppReady };
 };
 
 export const useDebounce = <T>(value: T, delay = 400): T => {
