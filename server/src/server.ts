@@ -84,9 +84,15 @@ const start = async () => {
   try {
     await connectDB();
 
-    // Initialise WhatsApp client — prints QR to terminal on first run,
-    // then loads the cached session from .wwebjs_auth/ on subsequent starts.
-    initWhatsAppClient();
+    // Initialise WhatsApp client only when explicitly enabled.
+    // whatsapp-web.js requires a local Chrome/Chromium install (via Puppeteer)
+    // and a physical device to scan the QR code — it cannot run on Render or
+    // other headless cloud hosts.  Run locally with WHATSAPP_ENABLED=true.
+    if (process.env.WHATSAPP_ENABLED === 'true') {
+      initWhatsAppClient();
+    } else {
+      console.log('[WhatsApp] Skipped — set WHATSAPP_ENABLED=true to enable locally.');
+    }
 
     server = app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
