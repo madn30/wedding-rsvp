@@ -1,5 +1,5 @@
 import api from './api';
-import { Guest, GuestForm, MessageChannel, ApiResponse, PaginationMeta } from '../types';
+import { Guest, GuestForm, ApiResponse, PaginationMeta } from '../types';
 
 export interface GetGuestsParams {
   search?: string;
@@ -27,12 +27,30 @@ export const deleteGuest = async (id: string): Promise<void> => {
   await api.delete(`/guests/${id}`);
 };
 
-export const sendInvitation = async (
-  id: string,
-  channel: MessageChannel
-): Promise<Guest> => {
-  const res = await api.post<ApiResponse<Guest>>(`/guests/${id}/send`, { channel });
-  return res.data.data!;
+/**
+ * Send a WhatsApp invitation to a guest.
+ *
+ * Calls POST /api/messages/send-invitation with the guest's phone number,
+ * a personalised Hebrew message (including their unique RSVP link), and their
+ * DB id so the server can update the messageSent / messageSentAt fields.
+ */
+export const sendWhatsAppInvitation = async (guest: Guest): Promise<void> => {
+  // Build the RSVP link from the current origin + guest token.
+  // VITE_APP_URL can be set in client/.env for production builds.
+  const origin =
+    (import.meta.env.VITE_APP_URL as string | undefined) ||
+    window.location.origin;
+
+  const rsvpLink = `${origin}/rsvp/${guest.token}`;
+  const messageContent =
+    `היי ${guest.name}, אנחנו מזמינים אתכם לחתונה שלנו! ` +
+    `אנא אשרו הגעה כאן: ${rsvpLink}`;
+
+  await api.post<ApiResponse<void>>('/messages/send-invitation', {
+    phoneNumber: guest.phone,
+    messageContent,
+    guestId: guest._id,
+  });
 };
 
 export const exportCSV = (): void => {

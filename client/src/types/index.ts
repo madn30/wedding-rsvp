@@ -1,5 +1,6 @@
 export type RSVPResponse = 'yes' | 'no' | 'maybe' | null;
-export type MessageChannel = 'sms' | 'whatsapp';
+/** SMS via Twilio has been removed — only WhatsApp is supported. */
+export type MessageChannel = 'whatsapp';
 export type FoodPreference = 'regular' | 'vegetarian' | 'vegan' | 'gluten-free' | null;
 
 export interface Guest {
