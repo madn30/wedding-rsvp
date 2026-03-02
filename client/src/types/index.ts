@@ -77,3 +77,36 @@ export interface RSVPSubmitPayload {
   transportNeeded?: boolean;
   specialRequests?: string;
 }
+
+
+export type TableShape = 'round' | 'rect' | 'square' | 'oval';
+
+export interface Table {
+  id: number;
+  name: string;
+  capacity: number;
+  cx: number;
+  cy: number;
+  shape: TableShape;
+  size: number;
+  rotation: number;
+}
+
+export interface Decoration {
+  id: string;
+  label: string;
+  cx: number;
+  cy: number;
+  width: number;
+  height: number;
+  color: string;
+  rotation: number;
+}
+
+export interface Guest {
+  id: string;
+  name: string;
+  meal: string;
+  status: string;
+  tableId: number | null;
+}
