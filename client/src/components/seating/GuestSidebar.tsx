@@ -27,6 +27,7 @@ const GuestCard: React.FC<GuestCardProps> = memo(({ guest, isBeingDragged }) => 
       ref={setNodeRef}
       {...listeners}
       {...attributes}
+      style={{ touchAction: 'none' }}
       className={`
         flex items-center gap-2.5 p-2 rounded-xl border cursor-grab select-none
         transition-all duration-150
