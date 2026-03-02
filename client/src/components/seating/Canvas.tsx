@@ -10,28 +10,17 @@ interface CanvasProps {
   hoveredTableId: string | null;
   isLoading: boolean;
   onSelectTable: (id: string | null) => void;
+  /** Called when a table is double-clicked — opens the config modal */
+  onDoubleClickTable?: () => void;
 }
 
-/**
- * The floor-plan canvas.
- *
- * - Acts as a `useDroppable` zone so dnd-kit can resolve pointer collisions.
- * - All tables are rendered as absolutely-positioned children, with their
- *   coordinates expressed as percentages so the layout scales with the
- *   container.
- * - The `ref` is forwarded to the outer div so the parent can read its
- *   `getBoundingClientRect()` when computing percentage deltas after a drag.
- */
 const Canvas = forwardRef<HTMLDivElement, CanvasProps>(
-  ({ tables, activeTableId, hoveredTableId, isLoading, onSelectTable }, ref) => {
-    // The canvas itself is a droppable so that when a table is released
-    // anywhere on it the collision detection resolves correctly.
+  ({ tables, activeTableId, hoveredTableId, isLoading, onSelectTable, onDoubleClickTable }, ref) => {
     const { setNodeRef: setDropRef } = useDroppable({
       id: 'canvas',
       data: { type: 'canvas' },
     });
 
-    // Merge the forwarded ref with the droppable ref
     const mergedRef = (node: HTMLDivElement | null) => {
       setDropRef(node);
       if (typeof ref === 'function') ref(node);
@@ -41,7 +30,7 @@ const Canvas = forwardRef<HTMLDivElement, CanvasProps>(
     return (
       <div
         ref={mergedRef}
-        className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl select-none"
+        className="relative w-full h-full rounded-2xl shadow-2xl select-none"
         style={{
           background: 'radial-gradient(ellipse at center, #243b5540 0%, #0d1b2a 100%)',
           backgroundImage: `
@@ -51,10 +40,8 @@ const Canvas = forwardRef<HTMLDivElement, CanvasProps>(
           `,
           border: '1px solid rgba(201,168,76,0.12)',
         }}
-        // Clicking the bare canvas deselects any active table
         onClick={() => onSelectTable(null)}
       >
-        {/* Loading overlay */}
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-[#0d1b2a]/60 z-50 rounded-2xl">
             <div className="flex flex-col items-center gap-3">
@@ -64,7 +51,6 @@ const Canvas = forwardRef<HTMLDivElement, CanvasProps>(
           </div>
         )}
 
-        {/* Empty-state hint */}
         {!isLoading && tables.length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <p className="text-white/15 text-sm font-serif">
@@ -73,7 +59,6 @@ const Canvas = forwardRef<HTMLDivElement, CanvasProps>(
           </div>
         )}
 
-        {/* Render each table */}
         {tables.map((table) => (
           <TableItem
             key={table._id}
@@ -81,6 +66,7 @@ const Canvas = forwardRef<HTMLDivElement, CanvasProps>(
             isSelected={activeTableId === table._id}
             isGuestHovering={hoveredTableId === table._id}
             onSelect={onSelectTable}
+            onDoubleClick={onDoubleClickTable}
           />
         ))}
       </div>

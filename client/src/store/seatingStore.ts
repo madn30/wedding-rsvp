@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 
 // ─── Domain types ────────────────────────────────────────────────────────────
 
-export type TableType = 'round' | 'rect' | 'square' | 'oval';
+export type TableType = 'round' | 'rect' | 'square' | 'oval' | 'dj' | 'dance' | 'bar' | 'stage';
 
 export interface SeatingGuest {
   _id: string;
