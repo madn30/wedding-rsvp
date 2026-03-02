@@ -1,0 +1,242 @@
+import { create } from 'zustand';
+import api from '../services/api';
+import toast from 'react-hot-toast';
+
+// ─── Domain types ────────────────────────────────────────────────────────────
+
+export type TableType = 'round' | 'rect' | 'square' | 'oval';
+
+export interface SeatingGuest {
+  _id: string;
+  name: string;
+  phone: string;
+  response: string | null;
+  numberOfGuests: number;
+  foodPreference: string | null;
+}
+
+export interface SeatingTable {
+  _id: string;
+  name: string;
+  type: TableType;
+  /** Percentage 0–100 of canvas width  */
+  x: number;
+  /** Percentage 0–100 of canvas height */
+  y: number;
+  capacity: number;
+  rotation: number;
+  size: number;
+  seatedGuests: SeatingGuest[];
+}
+
+// ─── Module-level debounce map (non-reactive, per table) ─────────────────────
+// Keyed by tableId; cleared after the timer fires.
+const positionTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+// ─── Store interface ─────────────────────────────────────────────────────────
+
+interface SeatingStore {
+  tables: SeatingTable[];
+  guests: SeatingGuest[];
+  isLoadingTables: boolean;
+  isLoadingGuests: boolean;
+  activeTableId: string | null;
+
+  // Data fetching
+  fetchTables: () => Promise<void>;
+  fetchGuests: () => Promise<void>;
+
+  // Table CRUD
+  addTable: (name: string, type?: TableType) => Promise<void>;
+  updateTableLocal: (id: string, updates: Partial<SeatingTable>) => void;
+  /**
+   * Immediately updates the local position (optimistic), then schedules an
+   * API PUT after 500 ms of inactivity.  If the PUT fails, the position is
+   * rolled back to the pre-drag coordinates that the caller provides.
+   */
+  debouncedSavePosition: (
+    id: string,
+    x: number,
+    y: number,
+    preDragX: number,
+    preDragY: number
+  ) => void;
+  updateTableConfig: (id: string, updates: Partial<SeatingTable>) => Promise<void>;
+  deleteTable: (id: string) => Promise<void>;
+
+  // Seating assignment
+  seatGuest: (guestId: string, tableId: string) => Promise<void>;
+  unseatGuest: (guestId: string, tableId: string) => Promise<void>;
+
+  // UI state
+  setActiveTable: (id: string | null) => void;
+}
+
+// ─── Store ───────────────────────────────────────────────────────────────────
+
+export const useSeatingStore = create<SeatingStore>((set, get) => ({
+  tables: [],
+  guests: [],
+  isLoadingTables: false,
+  isLoadingGuests: false,
+  activeTableId: null,
+
+  // ── Fetch ──────────────────────────────────────────────────────────────────
+
+  fetchTables: async () => {
+    set({ isLoadingTables: true });
+    try {
+      const { data } = await api.get('/tables');
+      set({ tables: data.data });
+    } catch {
+      toast.error('שגיאה בטעינת השולחנות');
+    } finally {
+      set({ isLoadingTables: false });
+    }
+  },
+
+  fetchGuests: async () => {
+    set({ isLoadingGuests: true });
+    try {
+      // Only confirmed (response=yes) guests belong in the seating plan
+      const { data } = await api.get('/guests?response=yes&limit=500');
+      set({ guests: data.data });
+    } catch {
+      toast.error('שגיאה בטעינת האורחים');
+    } finally {
+      set({ isLoadingGuests: false });
+    }
+  },
+
+  // ── Table CRUD ─────────────────────────────────────────────────────────────
+
+  addTable: async (name, type = 'round') => {
+    const toastId = toast.loading('מוסיף שולחן...');
+    try {
+      const { data } = await api.post('/tables', { name, type });
+      set((state) => ({ tables: [...state.tables, data.data] }));
+      toast.success('שולחן נוסף', { id: toastId });
+    } catch {
+      toast.error('שגיאה בהוספת שולחן', { id: toastId });
+    }
+  },
+
+  updateTableLocal: (id, updates) => {
+    set((state) => ({
+      tables: state.tables.map((t) =>
+        t._id === id ? { ...t, ...updates } : t
+      ),
+    }));
+  },
+
+  debouncedSavePosition: (id, x, y, preDragX, preDragY) => {
+    // Cancel any pending timer for the same table
+    if (positionTimers.has(id)) clearTimeout(positionTimers.get(id)!);
+
+    const timer = setTimeout(async () => {
+      positionTimers.delete(id);
+      try {
+        await api.put(`/tables/${id}`, { x, y });
+      } catch {
+        // Roll back to the position the table was at before the drag started
+        set((state) => ({
+          tables: state.tables.map((t) =>
+            t._id === id ? { ...t, x: preDragX, y: preDragY } : t
+          ),
+        }));
+        toast.error('שמירת המיקום נכשלה — בוצע שחזור');
+      }
+    }, 500);
+
+    positionTimers.set(id, timer);
+  },
+
+  updateTableConfig: async (id, updates) => {
+    const snapshot = get().tables;
+    // Optimistic update
+    set((state) => ({
+      tables: state.tables.map((t) =>
+        t._id === id ? { ...t, ...updates } : t
+      ),
+    }));
+    try {
+      const { data } = await api.put(`/tables/${id}`, updates);
+      // Reconcile with the server response (has populated seatedGuests)
+      set((state) => ({
+        tables: state.tables.map((t) => (t._id === id ? data.data : t)),
+      }));
+    } catch {
+      set({ tables: snapshot });
+      toast.error('שגיאה בעדכון השולחן');
+    }
+  },
+
+  deleteTable: async (id) => {
+    const snapshot = get().tables;
+    // Optimistic delete
+    set((state) => ({
+      tables: state.tables.filter((t) => t._id !== id),
+      activeTableId: state.activeTableId === id ? null : state.activeTableId,
+    }));
+    try {
+      await api.delete(`/tables/${id}`);
+      toast.success('שולחן נמחק');
+    } catch {
+      set({ tables: snapshot });
+      toast.error('שגיאה במחיקת השולחן');
+    }
+  },
+
+  // ── Seating assignment ─────────────────────────────────────────────────────
+
+  seatGuest: async (guestId, tableId) => {
+    const snapshot = get().tables;
+    const guest = get().guests.find((g) => g._id === guestId);
+    if (!guest) return;
+
+    const target = get().tables.find((t) => t._id === tableId);
+    if (!target) return;
+    if (target.seatedGuests.length >= target.capacity) {
+      toast.error('השולחן מלא');
+      return;
+    }
+
+    // Optimistic: remove from every table, then add to the target
+    set((state) => ({
+      tables: state.tables.map((t) => {
+        const without = t.seatedGuests.filter((g) => g._id !== guestId);
+        return t._id === tableId
+          ? { ...t, seatedGuests: [...without, guest] }
+          : { ...t, seatedGuests: without };
+      }),
+    }));
+
+    try {
+      await api.post(`/tables/${tableId}/seat/${guestId}`);
+    } catch (err: any) {
+      set({ tables: snapshot });
+      toast.error(err?.response?.data?.message ?? 'שגיאה בשיבוץ אורח');
+    }
+  },
+
+  unseatGuest: async (guestId, tableId) => {
+    const snapshot = get().tables;
+    set((state) => ({
+      tables: state.tables.map((t) =>
+        t._id === tableId
+          ? { ...t, seatedGuests: t.seatedGuests.filter((g) => g._id !== guestId) }
+          : t
+      ),
+    }));
+    try {
+      await api.delete(`/tables/${tableId}/seat/${guestId}`);
+    } catch {
+      set({ tables: snapshot });
+      toast.error('שגיאה בהסרת אורח');
+    }
+  },
+
+  // ── UI ─────────────────────────────────────────────────────────────────────
+
+  setActiveTable: (id) => set({ activeTableId: id }),
+}));
