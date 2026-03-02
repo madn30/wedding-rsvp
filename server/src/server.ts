@@ -15,6 +15,7 @@ import rsvpRoutes from './routes/rsvpRoutes';
 import statsRoutes from './routes/statsRoutes';
 import whatsappRoutes from './routes/whatsappRoutes';
 import messageRoutes from './routes/messageRoutes';
+import tableRoutes from './routes/tableRoutes';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -67,6 +68,7 @@ app.use('/api/rsvp', rsvpRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/whatsapp', whatsappRoutes);   // GET /api/whatsapp/status
 app.use('/api/messages', messageRoutes);    // POST /api/messages/send-invitation
+app.use('/api/tables', tableRoutes);        // GET|POST /api/tables  PUT|DELETE /api/tables/:id  POST|DELETE /api/tables/:id/seat/:guestId
 
 // 7. 404 & Error Handling
 app.use((_req, res) => {
