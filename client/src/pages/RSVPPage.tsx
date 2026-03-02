@@ -4,12 +4,12 @@ import { RSVPData, RSVPResponse } from '../types';
 import { getRSVP } from '../services/authService';
 import { RSVPButtons } from '../components/guest/RSVPButtons';
 import { FullPageLoader } from '../components/ui';
-import s from './RSVPPage.module.css';
+import { Heart, Calendar, MapPin, Sparkles, CheckCircle2, XCircle, HelpCircle, AlertCircle } from 'lucide-react';
 
-const RESPONSE_MESSAGES: Record<NonNullable<RSVPResponse>, { text: string; emoji: string }> = {
-  yes:   { text: 'נהדר! אנחנו שמחים שתגיע',  emoji: '🎉' },
-  no:    { text: 'חבל, נתגעגע אליך',           emoji: '💔' },
-  maybe: { text: 'תעדכן אותנו בהקדם',          emoji: '🤔' },
+const RESPONSE_MESSAGES: Record<NonNullable<RSVPResponse>, { text: string; icon: React.ReactNode; color: string }> = {
+  yes:   { text: 'נהדר! אנחנו שמחים שתגיעו',  icon: <CheckCircle2 size={48} />, color: '#c9a84c' },
+  no:    { text: 'חבל, נתגעגע אליכם',           icon: <XCircle size={48} />,      color: '#e74c3c' },
+  maybe: { text: 'תעדכנו אותנו בהקדם',          icon: <HelpCircle size={48} />,   color: '#94a3b8' },
 };
 
 export const RSVPPage = () => {
@@ -28,7 +28,7 @@ export const RSVPPage = () => {
           name: 'ישראל ישראלי',
           coupleNames: 'ליאל ועידן',
           weddingDate: '12.09.2026',
-          venue: '',
+          venue: 'אולם האירועים "הגן הקסום"',
           response: null,
           respondedAt: null,
           numberOfGuests: 1,
@@ -53,55 +53,86 @@ export const RSVPPage = () => {
   if (isLoading) return <FullPageLoader />;
 
   return (
-    <main className={s.page}>
-      <article className={s.card}>
-        <span className={s.ringIcon} aria-hidden="true">💍</span>
+    <main dir="rtl" className="min-h-screen bg-[#111827] flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans">
+      
+      {/* רקע דקורטיבי עדין */}
+      <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-[#c9a84c]/10 to-transparent"></div>
+      <div className="absolute bottom-0 right-0 w-64 h-64 bg-[#c9a84c]/5 blur-[100px] rounded-full"></div>
+
+      <article className="w-full max-w-lg bg-[#0d1b2a]/80 backdrop-blur-xl border border-[#c9a84c]/20 rounded-[2rem] shadow-2xl p-8 md:p-12 text-center relative z-10 animate-in fade-in zoom-in-95 duration-700">
+        
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#c9a84c]/10 border border-[#c9a84c]/30 mb-8 shadow-[0_0_20px_rgba(201,168,76,0.15)]">
+          <Heart className="text-[#c9a84c] fill-[#c9a84c]/20" size={28} />
+        </div>
 
         {error ? (
-          <div className={s.errorState}>
-            <h1 className={s.errorTitle}>קישור לא תקין</h1>
-            <p className={s.errorMsg}>{error}</p>
+          <div className="py-8">
+            <AlertCircle size={48} className="mx-auto text-red-400 mb-4 opacity-50" />
+            <h1 className="text-2xl font-serif text-[#faf6ef] mb-2">קישור לא תקין</h1>
+            <p className="text-white/50 text-sm leading-relaxed">{error}</p>
           </div>
         ) : data ? (
           <>
-            {/* Couple + Date */}
-            <h1 className={s.coupleNames}>{data.coupleNames}</h1>
-            {data.weddingDate && (
-              <p className={s.weddingDate}>{data.weddingDate}</p>
-            )}
+            {/* שמות הזוג ותאריך */}
+            <h1 className="text-4xl md:text-5xl font-serif text-[#faf6ef] mb-4 tracking-tight">
+              {data.coupleNames.split(' ו').map((name, i) => (
+                <span key={name}>{i > 0 && <em className="text-[#c9a84c] italic font-serif"> ו</em>}{name}</span>
+              ))}
+            </h1>
+            
+            <div className="flex flex-col items-center gap-2 mb-8">
+              {data.weddingDate && (
+                <p className="flex items-center gap-2 text-[#e8c97e] font-medium tracking-[0.2em] text-sm uppercase">
+                  <Calendar size={14} /> {data.weddingDate}
+                </p>
+              )}
+              {data.venue && (
+                <p className="flex items-center gap-2 text-white/40 text-xs">
+                  <MapPin size={12} /> {data.venue}
+                </p>
+              )}
+            </div>
 
             {/* Divider */}
-            <div className={s.divider} aria-hidden="true">
-              <div className={s.dividerLine} />
-              <span className={s.dividerIcon}>🌸</span>
-              <div className={s.dividerLine} />
+            <div className="flex items-center justify-center gap-4 mb-10 overflow-hidden" aria-hidden="true">
+              <div className="h-px w-16 bg-gradient-to-l from-[#c9a84c]/40 to-transparent" />
+              <Sparkles className="text-[#c9a84c]/40" size={16} />
+              <div className="h-px w-16 bg-gradient-to-r from-[#c9a84c]/40 to-transparent" />
             </div>
 
             {/* Guest greeting */}
-            <div className={s.greeting}>
-              <p className={s.greetingLabel}>שלום,</p>
-              <h2 className={s.guestName}>{data.name}</h2>
-              <p className={s.cta}>נשמח לראותך בחתונה שלנו!<br />אנא אשר את הגעתך:</p>
+            <div className="mb-10">
+              <p className="text-[#c9a84c] font-serif italic text-lg mb-1">שלום,</p>
+              <h2 className="text-3xl font-bold text-[#faf6ef] mb-4">{data.name}</h2>
+              <p className="text-white/60 text-base leading-relaxed max-w-[280px] mx-auto">
+                נשמח מאוד לראות אתכם חוגגים איתנו ביום המיוחד שלנו!
+              </p>
             </div>
 
             {/* Response area */}
             {submitted ? (
-              <div className={s.submittedBox}>
-                <div className={s.submittedCard}>
-                  <p className={s.submittedEmoji} aria-hidden="true">
-                    {RESPONSE_MESSAGES[submitted].emoji}
-                  </p>
-                  <p className={s.submittedMsg}>{RESPONSE_MESSAGES[submitted].text}</p>
-                  <p className={s.submittedSub}>תשובתך נרשמה בהצלחה</p>
+              <div className="bg-[#c9a84c]/5 border border-[#c9a84c]/20 rounded-2xl p-8 animate-in slide-in-from-bottom-4 duration-500">
+                <div className="flex flex-col items-center">
+                  <div className="mb-4" style={{ color: RESPONSE_MESSAGES[submitted].color }}>
+                    {RESPONSE_MESSAGES[submitted].icon}
+                  </div>
+                  <h3 className="text-xl font-bold text-[#faf6ef] mb-2">
+                    {RESPONSE_MESSAGES[submitted].text}
+                  </h3>
+                  <p className="text-white/40 text-sm">תשובתך נרשמה במערכת</p>
+                  
+                  {data.respondedAt && (
+                    <div className="mt-6 pt-4 border-t border-white/5 w-full">
+                      <p className="text-[10px] uppercase tracking-widest text-white/20">
+                        נשלח בתאריך {new Date(data.respondedAt).toLocaleDateString('he-IL')}
+                      </p>
+                    </div>
+                  )}
                 </div>
-                {data.respondedAt && (
-                  <p className={s.submittedDate}>
-                    נענה ב‑{new Date(data.respondedAt).toLocaleDateString('he-IL')}
-                  </p>
-                )}
               </div>
             ) : (
-              <div className={s.btnsWrap}>
+              <div className="w-full space-y-4">
+                <p className="text-[#e8c97e] text-xs font-bold tracking-widest uppercase mb-4">אנא אשרו הגעתכם:</p>
                 <RSVPButtons token={token!} onSuccess={setSubmitted} />
               </div>
             )}
@@ -109,8 +140,10 @@ export const RSVPPage = () => {
         ) : null}
       </article>
 
-      <footer className={s.footer}>
-        <p className={s.footerText}>עם אהבה ✨ {data?.coupleNames}</p>
+      <footer className="mt-12 text-center relative z-10">
+        <p className="text-white/30 text-sm font-serif italic flex items-center gap-2 justify-center">
+          נוצר באהבה עבור {data?.coupleNames} <Heart size={12} className="fill-current" />
+        </p>
       </footer>
     </main>
   );

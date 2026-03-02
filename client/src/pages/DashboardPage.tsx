@@ -1,19 +1,19 @@
 import { useStats } from '../hooks';
-import { StatCard, FullPageLoader } from '../components/ui';
+import { FullPageLoader } from '../components/ui';
 import {
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
 } from 'recharts';
-import s from './DashboardPage.module.css';
 
-const PIE_COLORS  = ['#059669', '#dc2626', '#f59e0b', '#94a3b8'];
-const STAT_COLORS = ['#3b82f6', '#059669', '#dc2626', '#8b5cf6'];
+// התאמנו את הצבעים לעיצוב הכהה/יוקרתי של האפליקציה
+// זהב (מגיע), אדום רך (לא מגיע), סגול/כחול (אולי), אפור שקוף (ממתין)
+const CHART_COLORS = ['#c9a84c', '#e74c3c', '#9b59b6', '#475569'];
 
 export const DashboardPage = () => {
   const { stats, isLoading } = useStats();
 
   if (isLoading) return <FullPageLoader />;
-  if (!stats)    return null;
+  if (!stats) return null;
 
   const pieData = [
     { name: 'מגיע',     value: stats.yes     },
@@ -23,117 +23,223 @@ export const DashboardPage = () => {
   ].filter(d => d.value > 0);
 
   const barData = [
-    { name: 'מגיע',     value: stats.yes,     fill: '#059669' },
-    { name: 'לא מגיע', value: stats.no,      fill: '#dc2626' },
-    { name: 'אולי',     value: stats.maybe,   fill: '#f59e0b' },
-    { name: 'ממתין',    value: stats.pending, fill: '#94a3b8' },
+    { name: 'מגיע',     value: stats.yes,     fill: CHART_COLORS[0] },
+    { name: 'לא מגיע', value: stats.no,      fill: CHART_COLORS[1] },
+    { name: 'אולי',     value: stats.maybe,   fill: CHART_COLORS[2] },
+    { name: 'ממתין',    value: stats.pending, fill: CHART_COLORS[3] },
   ];
+
+  const getStatusColor = (name: string) => {
+  switch (name) {
+    case 'מגיע': return '#c9a84c';    // זהב
+    case 'לא מגיע': return '#e74c3c'; // אדום
+    case 'אולי': return '#9b59b6';    // סגול
+    case 'ממתין': return '#475569';   // אפור
+    default: return '#ffffff';
+  }
+};
 
   const attendPct = stats.total > 0
     ? Math.round((stats.yes / stats.total) * 100)
     : 0;
 
-  return (
-    <div className={s.page}>
-      <hgroup className={s.heading}>
-        <h1 className={s.title}>לוח בקרה</h1>
-        <p className={s.subtitle}>סקירה כללית של ההזמנות</p>
-      </hgroup>
+  // Class משותף לכרטיסים בסגנון Glassmorphism כהה
+  const cardStyles = "bg-[#0d1b2a]/90 border border-[#c9a84c]/15 rounded-2xl shadow-2xl p-6 backdrop-blur-md";
+  // רכיב כרטיס סטטיסטיקה מותאם אישית לעיצוב הנוכחי
+  const ThemeStatCard = ({ title, value, icon, subtitle, color }: any) => (
+    <div className={`${cardStyles} flex flex-col items-center sm:items-start text-center sm:text-right group hover:border-[#c9a84c]/40 transition-colors duration-300`}>
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-10 h-10 rounded-full flex items-center justify-center text-lg" style={{ backgroundColor: `${color}15`, color: color, border: `1px solid ${color}30` }}>
+          {icon}
+        </div>
+        <h3 className="text-sm font-semibold text-white/60">{title}</h3>
+      </div>
+      <div className="text-3xl font-serif text-[#faf6ef] font-bold mb-1">{value}</div>
+      {subtitle && <p className="text-[11px] text-[#c9a84c]/80 uppercase tracking-wider">{subtitle}</p>}
+    </div>
+  );
 
-      {/* Stats */}
-      <section aria-label="סטטיסטיקות" className={s.statsGrid}>
-        <StatCard
+  // סגנון משותף ל-Tooltip של הגרפים כדי שייראה טוב על רקע כהה
+  const tooltipStyle = {
+    backgroundColor: '#0d1b2a',
+    border: '1px solid rgba(201, 168, 76, 0.3)',
+    borderRadius: '12px',
+    color: '#faf6ef',
+    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)'
+  };
+
+  return (
+    <div dir="rtl" className="p-4 md:p-8 w-full max-w-[1600px] mx-auto bg-[#111827] min-h-screen text-white font-sans flex flex-col gap-8 animate-in fade-in duration-500">
+      
+      <header className="text-center md:text-right mb-2">
+        <h1 className="text-3xl lg:text-4xl font-serif text-[#faf6ef]">לוח בקרה <em className="text-[#c9a84c] font-serif italic">וסטטיסטיקות</em></h1>
+        <p className="font-sans text-sm text-white/50 mt-2">סקירה כללית של מצב ההזמנות בזמן אמת</p>
+      </header>
+
+      {/* Stats Grid */}
+      <section aria-label="סטטיסטיקות" className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        <ThemeStatCard
           title="סה״כ מוזמנים"
           value={stats.total}
           icon="👥"
-          accentColor={STAT_COLORS[0]}
+          color="#4a90e2"
           subtitle={`${stats.messageSent} הודעות נשלחו`}
         />
-        <StatCard
+        <ThemeStatCard
           title="מגיעים"
           value={stats.yes}
-          icon="✅"
-          accentColor={STAT_COLORS[1]}
+          icon="🥂"
+          color="#c9a84c"
           subtitle={`${attendPct}% מהמוזמנים`}
         />
-        <StatCard
+        <ThemeStatCard
           title="לא מגיעים"
           value={stats.no}
-          icon="❌"
-          accentColor={STAT_COLORS[2]}
+          icon="🤍"
+          color="#e74c3c"
         />
-        <StatCard
+        <ThemeStatCard
           title="שיעור מענה"
           value={`${stats.responseRate}%`}
           icon="📊"
-          accentColor={STAT_COLORS[3]}
+          color="#2ecc71"
           subtitle={`${stats.maybe} אולי`}
         />
       </section>
 
-      {/* Charts */}
-      <section aria-label="גרפים" className={s.chartsGrid}>
-        <article className={s.chartCard}>
-          <h2 className={s.chartTitle}>התפלגות תשובות</h2>
-          {pieData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={260}>
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  cx="50%" cy="50%"
-                  innerRadius={65} outerRadius={105}
-                  paddingAngle={4}
-                  dataKey="value"
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  labelLine={false}
-                >
-                  {pieData.map((_, i) => (
-                    <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <p className={s.chartEmpty}>אין נתונים להצגה עדיין</p>
-          )}
-        </article>
+ <section aria-label="גרפים" className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-        <article className={s.chartCard}>
-          <h2 className={s.chartTitle}>סיכום תשובות</h2>
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={barData} barSize={36}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-              <XAxis dataKey="name" tick={{ fontSize: 12, fontFamily: 'Inter' }} axisLine={false} tickLine={false} />
-              <YAxis allowDecimals={false} tick={{ fontSize: 12, fontFamily: 'Inter' }} axisLine={false} tickLine={false} />
-              <Tooltip
-                contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)', fontFamily: 'Inter' }}
+  <article className={cardStyles}>
+    <div className="flex justify-between items-center border-b border-white/5 pb-4 mb-4">
+      <h2 className="text-lg font-serif text-[#e8c97e]">התפלגות תשובות</h2>
+      <span className="text-[10px] text-white/30 uppercase tracking-[0.2em]">Live Data</span>
+    </div>
+
+  {pieData.length > 0 ? (
+    /* הוספנו h-[320px] ו-relative כדי למקם את הטקסט בדיוק באמצע */
+    <div className="h-[320px] w-full relative">
+      
+      {/* טקסט מרכזי - עטוף ב-DIV עם z-index גבוה כדי שיהיה מעל הגרף */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10" style={{ marginTop: '-25px' }}>
+        <span className="text-white/30 text-[10px] uppercase tracking-[0.2em] mb-1">סה"כ</span>
+        <span className="text-4xl font-serif font-bold text-[#faf6ef] leading-none drop-shadow-md">
+          {pieData.reduce((acc, curr) => acc + curr.value, 0)}
+        </span>
+        <span className="text-[#c9a84c] text-[11px] font-medium mt-1 tracking-wide opacity-80">אורחים</span>
+      </div>
+
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie
+            data={pieData}
+            cx="50%"
+            cy="50%"
+            innerRadius={75}
+            outerRadius={95}
+            paddingAngle={8}
+            dataKey="value"
+            stroke="none"
+            cornerRadius={10}
+            startAngle={90}
+            endAngle={450}
+            animationBegin={200}
+            animationDuration={1000}
+            /* ביטלנו את הלייבלים החיצוניים כדי לשמור על מראה נקי (הכל מופיע ב-Legend ובמרכז) */
+            label={false} 
+          >
+            {pieData.map((entry, i) => (
+              <Cell 
+                key={`cell-${i}`} 
+                fill={getStatusColor(entry.name)} 
+                className="hover:opacity-80 transition-opacity cursor-pointer outline-none"
               />
-              <Bar dataKey="value" radius={[6, 6, 0, 0]}>
-                {barData.map((entry, i) => (
-                  <Cell key={i} fill={entry.fill} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </article>
-      </section>
+            ))}
+          </Pie>
 
+          <Tooltip 
+            contentStyle={tooltipStyle} 
+            itemStyle={{ color: '#faf6ef', fontSize: '12px' }} 
+            cursor={{ fill: 'transparent' }}
+          />
+          
+          <Legend 
+            verticalAlign="bottom" 
+            align="center"
+            iconType="circle"
+            iconSize={8}
+            formatter={(value) => (
+              <span className="text-white/60 text-[11px] font-medium px-2 hover:text-[#c9a84c] transition-colors uppercase tracking-wider">
+                {value}
+              </span>
+            )}
+          />
+        </PieChart>
+      </ResponsiveContainer>
+    </div>
+  ) : (
+    <div className="flex flex-col items-center justify-center h-[260px] opacity-20">
+       <div className="w-16 h-16 border border-dashed border-white/20 rounded-full mb-4" />
+       <p className="text-sm italic">אין נתונים להצגה</p>
+    </div>
+  )}
+</article>
+  <article className={cardStyles}>
+    <h2 className="text-lg font-serif text-[#e8c97e] border-b border-white/5 pb-4 mb-4">סיכום תשובות</h2>
+    <div className="h-[300px] w-full">
+      <ResponsiveContainer>
+        <BarChart data={barData} barSize={40} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+          {/* הוספת צבע לבן לצירים */}
+          <XAxis 
+            dataKey="name" 
+            tick={{ fontSize: 12, fill: 'rgba(255,255,255,0.6)' }} 
+            axisLine={{ stroke: 'rgba(255,255,255,0.1)' }} 
+            tickLine={false} 
+          />
+          <YAxis 
+            allowDecimals={false} 
+            tick={{ fontSize: 12, fill: 'rgba(255,255,255,0.6)' }} 
+            axisLine={{ stroke: 'rgba(255,255,255,0.1)' }} 
+            tickLine={false} 
+          />
+          <Tooltip 
+            cursor={{ fill: 'rgba(255,255,255,0.05)' }} 
+            contentStyle={tooltipStyle} 
+            itemStyle={{ color: '#faf6ef' }} 
+          />
+          <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+            {barData.map((entry, i) => (
+              <Cell key={`cell-${i}`} fill={getStatusColor(entry.name)} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  </article>
+</section>
       {/* Progress */}
-      <section aria-label="התקדמות" className={s.progressCard}>
-        <div className={s.progressHeader}>
-          <h2 className={s.progressTitle}>התקדמות מענה</h2>
-          <span className={s.progressPct}>{stats.responseRate}%</span>
+      <section aria-label="התקדמות" className={cardStyles}>
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <h2 className="text-lg font-serif text-[#e8c97e]">התקדמות מענה מצטברת</h2>
+          <span className="font-sans text-2xl font-bold text-[#c9a84c] bg-[#c9a84c]/10 px-3 py-1 rounded-lg border border-[#c9a84c]/20">
+            {stats.responseRate}%
+          </span>
         </div>
-        <div className={s.progressTrack} role="progressbar"
+        <div className="h-4 w-full bg-black/40 rounded-full overflow-hidden border border-white/5 shadow-inner" role="progressbar"
           aria-valuenow={stats.responseRate} aria-valuemin={0} aria-valuemax={100}>
-          <div className={s.progressFill} style={{ width: `${stats.responseRate}%` }} />
+          <div 
+            className="h-full bg-gradient-to-l from-[#c9a84c] via-[#e8c97e] to-[#c9a84c] rounded-full transition-all duration-1000 ease-out relative overflow-hidden" 
+            style={{ width: `${stats.responseRate}%` }} 
+          >
+            {/* אפקט ברק קטן על הבר התקדמות */}
+            <div className="absolute top-0 left-0 w-full h-full bg-white/20 -skew-x-12 translate-x-full animate-[shimmer_2s_infinite]"></div>
+          </div>
         </div>
-        <p className={s.progressSub}>
-          {stats.yes + stats.no + stats.maybe} מתוך {stats.total} ענו
+        <p className="text-sm text-white/40 mt-4 text-center">
+          <strong className="text-white/80">{stats.yes + stats.no + stats.maybe}</strong> מתוך <strong className="text-white/80">{stats.total}</strong> ענו
         </p>
       </section>
+
     </div>
   );
 };

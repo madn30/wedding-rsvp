@@ -3,7 +3,7 @@ import { Guest } from '../../types';
 import { ResponseBadge, Spinner } from '../ui';
 import { sendWhatsAppInvitation, deleteGuest } from '../../services/guestService';
 import toast from 'react-hot-toast';
-import s from './GuestTable.module.css';
+import { MessageCircle, ExternalLink, Trash2, Users } from 'lucide-react';
 
 interface GuestTableProps {
   guests: Guest[];
@@ -42,79 +42,78 @@ export const GuestTable = ({ guests, onRefresh }: GuestTableProps) => {
 
   if (guests.length === 0) {
     return (
-      <div className={s.empty}>
-        <span className={s.emptyIcon}>👥</span>
-        <p className={s.emptyText}>לא נמצאו אורחים</p>
+      <div className="flex flex-col items-center justify-center p-16 text-white/30 text-center">
+        <Users size={48} className="mb-4 opacity-20" />
+        <p className="text-lg font-serif italic">לא נמצאו אורחים התואמים לחיפוש</p>
       </div>
     );
   }
 
   return (
-    <div className={s.wrapper}>
-      <table className={s.table}>
-        <thead className={s.thead}>
+    <div className="w-full overflow-x-auto">
+      <table className="w-full text-right border-collapse">
+        <thead className="bg-white/[0.03] border-b border-[#c9a84c]/20 text-[#e8c97e] font-serif text-sm">
           <tr>
-            {['שם', 'טלפון', 'תשובה', 'הודעה', 'תאריך תשובה', 'פעולות'].map(h => (
-              <th key={h} className={s.th}>{h}</th>
+            {['שם', 'טלפון', 'תשובה', 'הודעה', 'תאריך', 'פעולות'].map(h => (
+              <th key={h} className="p-4 whitespace-nowrap font-medium">{h}</th>
             ))}
           </tr>
         </thead>
-        <tbody>
+        <tbody className="text-sm">
           {guests.map(guest => (
-            <tr key={guest._id} className={s.tr}>
-              <td className={`${s.td} ${s.tdName}`} data-label="שם">
+            <tr key={guest._id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors group">
+              <td className="p-4 font-semibold text-[#faf6ef] whitespace-nowrap">
                 {guest.name}
               </td>
-              <td className={`${s.td} ${s.tdPhone}`} data-label="טלפון">
+              <td className="p-4 text-white/70 font-mono text-xs whitespace-nowrap" dir="ltr">
                 {guest.phone}
               </td>
-              <td className={s.td} data-label="תשובה">
+              <td className="p-4 whitespace-nowrap">
                 <ResponseBadge response={guest.response} />
               </td>
-              <td className={s.td} data-label="הודעה">
+              <td className="p-4 whitespace-nowrap">
                 {guest.messageSent ? (
-                  <span className={`${s.msgChip} ${s.msgSent}`}>
-                    📱 WhatsApp
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#2ecc71]/10 border border-[#2ecc71]/20 text-[#2ecc71] text-[11px] font-bold tracking-wider">
+                    <MessageCircle size={12} /> נשלח
                   </span>
                 ) : (
-                  <span className={`${s.msgChip} ${s.msgUnsent}`}>לא נשלח</span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-white/40 text-[11px] font-bold tracking-wider">
+                    לא נשלח
+                  </span>
                 )}
               </td>
-              <td className={s.td} data-label="תאריך תשובה">
+              <td className="p-4 text-white/40 text-xs whitespace-nowrap">
                 {guest.respondedAt
                   ? new Date(guest.respondedAt).toLocaleDateString('he-IL')
                   : '—'}
               </td>
-              <td className={s.td} data-label="פעולות">
+              <td className="p-4 whitespace-nowrap">
                 {loadingId === guest._id ? (
-                  <Spinner size="sm" />
+                  <div className="flex justify-center w-[100px]"><Spinner size="sm" /></div>
                 ) : (
-                  <div className={s.actions}>
+                  <div className="flex items-center gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
                     <button
-                      className={`${s.actionBtn} ${s.actionWhatsapp}`}
+                      className="p-2 rounded-lg bg-[#2ecc71]/10 text-[#2ecc71] hover:bg-[#2ecc71]/20 transition-colors"
                       onClick={() => handleSend(guest)}
                       title="שלח הזמנה ב-WhatsApp"
-                      aria-label={`שלח הזמנה ב-WhatsApp ל${guest.name}`}
                     >
-                      📱
+                      <MessageCircle size={16} />
                     </button>
                     <a
                       href={`/rsvp/${guest.token}`}
                       target="_blank"
                       rel="noreferrer"
-                      className={`${s.actionBtn} ${s.actionLink}`}
+                      className="p-2 rounded-lg bg-white/5 text-white/60 hover:bg-white/10 hover:text-white transition-colors"
                       title="פתח לינק RSVP"
-                      aria-label={`לינק RSVP של ${guest.name}`}
                     >
-                      🔗
+                      <ExternalLink size={16} />
                     </a>
                     <button
-                      className={`${s.actionBtn} ${s.actionDelete}`}
+                      className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
                       onClick={() => handleDelete(guest)}
-                      title="מחק"
-                      aria-label={`מחק את ${guest.name}`}
+                      title="מחק אורח"
                     >
-                      🗑️
+                      <Trash2 size={16} />
                     </button>
                   </div>
                 )}
