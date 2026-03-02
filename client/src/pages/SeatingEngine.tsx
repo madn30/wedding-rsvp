@@ -13,11 +13,15 @@ import {
   MouseSensor,
   TouchSensor,
   pointerWithin,
+  closestCenter,
+  CollisionDetection,
+  useDroppable,
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
 import {
   LayoutGrid,
+  Layers,
   Plus,
   Settings,
   Trash2,
@@ -32,34 +36,57 @@ import GuestSidebar from '../components/seating/GuestSidebar';
 import { SeatingGuest, SeatingTable, TableType, useSeatingStore } from '../store/seatingStore';
 
 // ─── Snap-to-grid helper ──────────────────────────────────────────────────────
-const SNAP_PCT = 1; // snap to 1% increments ≈ 10 px on a 1 000 px canvas
+const SNAP_PCT = 1;
 function snap(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, Math.round(v / SNAP_PCT) * SNAP_PCT));
 }
 
+// ─── Element types ─────────────────────────────────────────────────────────
+const ELEMENT_TYPES_SET = new Set(['dj', 'dance', 'bar', 'stage']);
+
+const ELEMENTS: { type: TableType; label: string; emoji: string; defaultName: string }[] = [
+  { type: 'dj',    label: 'DJ בוקס',       emoji: '🎛️', defaultName: 'DJ' },
+  { type: 'dance', label: 'רחבת ריקודים', emoji: '💃', defaultName: 'רחבת ריקודים' },
+  { type: 'bar',   label: 'בר',             emoji: '🍹', defaultName: 'בר' },
+  { type: 'stage', label: 'במה',            emoji: '🎤', defaultName: 'במה' },
+];
+
 // ─── Table Config Modal ───────────────────────────────────────────────────────
+
+const TABLE_SHAPES: { id: TableType; label: string; preview: React.ReactNode }[] = [
+  { id: 'round',  label: 'עגול',   preview: <div className="w-5 h-5 rounded-full border-2 border-current" /> },
+  { id: 'rect',   label: 'מלבן',   preview: <div className="w-6 h-4 border-2 border-current rounded" /> },
+  { id: 'square', label: 'ריבוע',  preview: <div className="w-5 h-5 border-2 border-current rounded" /> },
+  { id: 'oval',   label: 'אליפסה', preview: <div className="w-6 h-4 border-2 border-current rounded-[50%]" /> },
+];
 
 interface TableConfigModalProps {
   table: SeatingTable;
   onClose: () => void;
   onUpdate: (updates: Partial<SeatingTable>) => void;
+  onUpdateLocal: (updates: Partial<SeatingTable>) => void;
   onDelete: () => void;
 }
-
-const SHAPES: { id: TableType; label: string; preview: React.ReactNode }[] = [
-  { id: 'round',  label: 'עגול',    preview: <div className="w-5 h-5 rounded-full border-2 border-current" /> },
-  { id: 'rect',   label: 'מלבן',    preview: <div className="w-6 h-4 border-2 border-current rounded" /> },
-  { id: 'square', label: 'ריבוע',   preview: <div className="w-5 h-5 border-2 border-current rounded" /> },
-  { id: 'oval',   label: 'אליפסה',  preview: <div className="w-6 h-4 border-2 border-current rounded-[50%]" /> },
-];
 
 const TableConfigModal: React.FC<TableConfigModalProps> = ({
   table,
   onClose,
   onUpdate,
+  onUpdateLocal,
   onDelete,
 }) => {
+  // Local state for sliders — prevents spamming API on every pixel move
+  const [localSize, setLocalSize] = useState(table.size ?? 1);
+  const [localRotation, setLocalRotation] = useState(table.rotation ?? 0);
   const [sliding, setSliding] = useState(false);
+
+  // Sync local state when the table itself changes (e.g. switching selected table)
+  useEffect(() => {
+    setLocalSize(table.size ?? 1);
+    setLocalRotation(table.rotation ?? 0);
+  }, [table._id]);
+
+  const isElem = ELEMENT_TYPES_SET.has(table.type);
 
   return (
     <div
@@ -74,7 +101,9 @@ const TableConfigModal: React.FC<TableConfigModalProps> = ({
       >
         {/* Header */}
         <div className="flex justify-between items-center p-4 border-b border-white/10 bg-white/5 shrink-0">
-          <h2 className="text-base font-serif text-[#e8c97e]">הגדרות שולחן</h2>
+          <h2 className="text-base font-serif text-[#e8c97e]">
+            {isElem ? 'הגדרות אלמנט' : 'הגדרות שולחן'}
+          </h2>
           <button
             onClick={onClose}
             className="text-white/40 hover:text-white transition p-1.5"
@@ -88,7 +117,7 @@ const TableConfigModal: React.FC<TableConfigModalProps> = ({
           {/* Name */}
           <div>
             <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-1">
-              שם שולחן
+              {isElem ? 'שם אלמנט' : 'שם שולחן'}
             </label>
             <input
               type="text"
@@ -98,40 +127,54 @@ const TableConfigModal: React.FC<TableConfigModalProps> = ({
             />
           </div>
 
-          {/* Capacity + Size */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-1">
-                קיבולת
-              </label>
-              <input
-                type="number"
-                min={1}
-                max={50}
-                value={table.capacity}
-                onChange={(e) =>
-                  onUpdate({ capacity: parseInt(e.target.value) || 1 })
-                }
-                className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#c9a84c]/50"
-              />
-            </div>
+          {/* Capacity (tables only) + Size */}
+          <div className={`grid gap-3 ${isElem ? 'grid-cols-1' : 'grid-cols-2'}`}>
+            {!isElem && (
+              <div>
+                <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-1">
+                  קיבולת
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={50}
+                  value={table.capacity}
+                  onChange={(e) =>
+                    onUpdate({ capacity: parseInt(e.target.value) || 1 })
+                  }
+                  className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#c9a84c]/50"
+                />
+              </div>
+            )}
             <div>
               <label className="block text-[10px] uppercase tracking-widest text-[#c9a84c]/70 mb-1">
-                גודל מפה
+                גודל — {localSize.toFixed(1)}×
               </label>
               <input
                 type="range"
                 min={0.5}
                 max={2.5}
                 step={0.1}
-                value={table.size ?? 1}
-                onChange={(e) =>
-                  onUpdate({ size: parseFloat(e.target.value) })
-                }
+                value={localSize}
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value);
+                  setLocalSize(val);
+                  onUpdateLocal({ size: val }); // local-only, no API
+                }}
                 onPointerDown={() => setSliding(true)}
-                onPointerUp={() => setSliding(false)}
+                onPointerUp={(e) => {
+                  const val = parseFloat((e.target as HTMLInputElement).value);
+                  setLocalSize(val);
+                  onUpdate({ size: val }); // save to API
+                  setSliding(false);
+                }}
                 onTouchStart={() => setSliding(true)}
-                onTouchEnd={() => setSliding(false)}
+                onTouchEnd={(e) => {
+                  const val = parseFloat((e.currentTarget as HTMLInputElement).value);
+                  setLocalSize(val);
+                  onUpdate({ size: val });
+                  setSliding(false);
+                }}
                 className="w-full mt-2 accent-[#c9a84c]"
               />
             </div>
@@ -148,21 +191,33 @@ const TableConfigModal: React.FC<TableConfigModalProps> = ({
                 min={0}
                 max={360}
                 step={1}
-                value={table.rotation ?? 0}
-                onChange={(e) =>
-                  onUpdate({ rotation: parseInt(e.target.value) })
-                }
+                value={localRotation}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value);
+                  setLocalRotation(val);
+                  onUpdateLocal({ rotation: val }); // local-only, no API
+                }}
                 onPointerDown={() => setSliding(true)}
-                onPointerUp={() => setSliding(false)}
+                onPointerUp={(e) => {
+                  const val = parseInt((e.target as HTMLInputElement).value);
+                  setLocalRotation(val);
+                  onUpdate({ rotation: val }); // save to API
+                  setSliding(false);
+                }}
                 onTouchStart={() => setSliding(true)}
-                onTouchEnd={() => setSliding(false)}
+                onTouchEnd={(e) => {
+                  const val = parseInt((e.currentTarget as HTMLInputElement).value);
+                  setLocalRotation(val);
+                  onUpdate({ rotation: val });
+                  setSliding(false);
+                }}
                 className="flex-1 accent-[#c9a84c]"
               />
               <span
                 className="w-12 text-center bg-white/5 border border-white/10 rounded-lg py-1 text-[#e8c97e] font-bold text-xs"
                 dir="ltr"
               >
-                {table.rotation ?? 0}°
+                {localRotation}°
               </span>
             </div>
           </div>
@@ -170,24 +225,43 @@ const TableConfigModal: React.FC<TableConfigModalProps> = ({
           {/* Shape picker */}
           <div>
             <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-2">
-              צורה
+              {isElem ? 'סוג אלמנט' : 'צורה'}
             </label>
-            <div className="grid grid-cols-4 gap-2">
-              {SHAPES.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => onUpdate({ type: s.id })}
-                  className={`flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${
-                    table.type === s.id
-                      ? 'bg-[#c9a84c]/20 border-[#c9a84c] text-[#e8c97e]'
-                      : 'bg-white/5 border-white/10 text-white/35 hover:text-white/60'
-                  }`}
-                >
-                  {s.preview}
-                  <span className="text-[9px]">{s.label}</span>
-                </button>
-              ))}
-            </div>
+            {!isElem ? (
+              <div className="grid grid-cols-4 gap-2">
+                {TABLE_SHAPES.map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => onUpdate({ type: s.id })}
+                    className={`flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${
+                      table.type === s.id
+                        ? 'bg-[#c9a84c]/20 border-[#c9a84c] text-[#e8c97e]'
+                        : 'bg-white/5 border-white/10 text-white/35 hover:text-white/60'
+                    }`}
+                  >
+                    {s.preview}
+                    <span className="text-[9px]">{s.label}</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-4 gap-2">
+                {ELEMENTS.map((el) => (
+                  <button
+                    key={el.type}
+                    onClick={() => onUpdate({ type: el.type })}
+                    className={`flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${
+                      table.type === el.type
+                        ? 'bg-[#c9a84c]/20 border-[#c9a84c] text-[#e8c97e]'
+                        : 'bg-white/5 border-white/10 text-white/35 hover:text-white/60'
+                    }`}
+                  >
+                    <span className="text-lg">{el.emoji}</span>
+                    <span className="text-[9px]">{el.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -219,87 +293,103 @@ interface TableDetailProps {
 }
 
 const TableDetail: React.FC<TableDetailProps> = ({ table, onUnseat }) => {
+  // Make the detail panel a drop target — guest dropped here → seat at this table
+  const { setNodeRef, isOver } = useDroppable({
+    id: 'table-detail-drop',
+    data: { type: 'table-detail', tableId: table._id },
+  });
+
   const emptySeats = Math.max(0, table.capacity - table.seatedGuests.length);
+  const isElem = ELEMENT_TYPES_SET.has(table.type);
 
   return (
-    <aside className="bg-[#0d1b2a]/90 border border-[#c9a84c]/15 rounded-2xl h-full flex flex-col overflow-hidden backdrop-blur-md">
+    <aside
+      ref={setNodeRef}
+      className="bg-[#0d1b2a]/90 border border-[#c9a84c]/15 rounded-2xl h-full flex flex-col overflow-hidden backdrop-blur-md transition-all duration-150"
+      style={{
+        boxShadow: isOver
+          ? '0 0 0 2px #60a5fa, 0 0 30px rgba(96,165,250,0.25)'
+          : undefined,
+        borderColor: isOver ? '#60a5fa' : undefined,
+      }}
+    >
       <div className="p-3 border-b border-white/5 shrink-0">
-        <h4 className="font-serif text-[#faf6ef] text-sm">
-          {table.name}
-        </h4>
-        <div className="flex items-center gap-2 mt-1.5">
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#c9a84c]/10 border border-[#c9a84c]/25 rounded-lg text-[#e8c97e] text-[9px] font-semibold uppercase">
-            🪑 {table.seatedGuests.length} / {table.capacity}
-          </span>
-          {table.seatedGuests.length >= table.capacity && (
-            <span className="text-[9px] text-red-400 font-semibold">מלא</span>
-          )}
+        <h4 className="font-serif text-[#faf6ef] text-sm">{table.name}</h4>
+        {!isElem && (
+          <div className="flex items-center gap-2 mt-1.5">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#c9a84c]/10 border border-[#c9a84c]/25 rounded-lg text-[#e8c97e] text-[9px] font-semibold uppercase">
+              🪑 {table.seatedGuests.length} / {table.capacity}
+            </span>
+            {table.seatedGuests.length >= table.capacity && (
+              <span className="text-[9px] text-red-400 font-semibold">מלא</span>
+            )}
+          </div>
+        )}
+        {isOver && (
+          <p className="text-[10px] text-[#60a5fa] mt-1.5 font-semibold animate-pulse">
+            שחרר לשיבוץ בשולחן זה
+          </p>
+        )}
+      </div>
+
+      {isElem ? (
+        <div className="flex-1 flex items-center justify-center p-4">
+          <p className="text-white/25 text-xs text-center font-serif">
+            אלמנט עיצובי — אין מקומות ישיבה
+          </p>
         </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
-        {table.seatedGuests.map((guest, i) => (
-          <div
-            key={guest._id}
-            className="flex items-center gap-2 p-2 bg-[#c9a84c]/5 border border-[#c9a84c]/15 rounded-xl"
-          >
-            <div className="w-6 h-6 shrink-0 rounded-md bg-[#c9a84c]/20 text-[#e8c97e] flex items-center justify-center text-[10px] font-bold">
-              {i + 1}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-[#faf6ef] truncate">
-                {guest.name}
-              </p>
-              {guest.foodPreference && (
-                <p className="text-[9px] text-white/30 truncate">{guest.foodPreference}</p>
-              )}
-            </div>
-            <button
-              className="p-1 rounded-md hover:bg-white/5 transition"
-              onClick={() => onUnseat(guest._id)}
+      ) : (
+        <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+          {table.seatedGuests.map((guest, i) => (
+            <div
+              key={guest._id}
+              className="flex items-center gap-2 p-2 bg-[#c9a84c]/5 border border-[#c9a84c]/15 rounded-xl"
             >
-              <Trash2 size={13} className="text-white/25 hover:text-red-400 transition" />
-            </button>
-          </div>
-        ))}
-
-        {Array.from({ length: emptySeats }).map((_, i) => (
-          <div
-            key={`empty-${i}`}
-            className="flex items-center gap-2 p-2 border border-white/5 border-dashed rounded-xl opacity-25"
-          >
-            <div className="w-6 h-6 shrink-0 rounded-md bg-white/10 flex items-center justify-center text-[10px] text-white">
-              {table.seatedGuests.length + i + 1}
+              <div className="w-6 h-6 shrink-0 rounded-md bg-[#c9a84c]/20 text-[#e8c97e] flex items-center justify-center text-[10px] font-bold">
+                {i + 1}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-[#faf6ef] truncate">{guest.name}</p>
+                {guest.foodPreference && (
+                  <p className="text-[9px] text-white/30 truncate">{guest.foodPreference}</p>
+                )}
+              </div>
+              <button
+                className="p-1 rounded-md hover:bg-white/5 transition"
+                onClick={() => onUnseat(guest._id)}
+              >
+                <Trash2 size={13} className="text-white/25 hover:text-red-400 transition" />
+              </button>
             </div>
-            <span className="text-[10px] text-white/40 italic">מקום פנוי</span>
-          </div>
-        ))}
-      </div>
+          ))}
+
+          {Array.from({ length: emptySeats }).map((_, i) => (
+            <div
+              key={`empty-${i}`}
+              className="flex items-center gap-2 p-2 border border-white/5 border-dashed rounded-xl opacity-25"
+            >
+              <div className="w-6 h-6 shrink-0 rounded-md bg-white/10 flex items-center justify-center text-[10px] text-white">
+                {table.seatedGuests.length + i + 1}
+              </div>
+              <span className="text-[10px] text-white/40 italic">מקום פנוי</span>
+            </div>
+          ))}
+        </div>
+      )}
     </aside>
   );
 };
 
-// ─── DragOverlay visuals ──────────────────────────────────────────────────────
-
-const TableDragGhost: React.FC<{ table: SeatingTable }> = ({ table }) => (
-  <div
-    className="flex items-center justify-center rounded-xl border-2 border-[#c9a84c] bg-[#1a2e45]/80 shadow-2xl shadow-[#c9a84c]/30"
-    style={{ width: 80, height: 80, borderRadius: table.type === 'round' || table.type === 'oval' ? '50%' : 8 }}
-  >
-    <span className="text-[#e8c97e] text-xs font-bold truncate max-w-[70px] text-center px-1">
-      {table.name}
-    </span>
-  </div>
-);
+// ─── Drag overlay visuals ─────────────────────────────────────────────────────
+// Tables move via their own CSS transform (no separate ghost needed).
+// Only guest cards need an overlay since they travel from the sidebar to the canvas.
 
 const GuestDragGhost: React.FC<{ guest: SeatingGuest }> = ({ guest }) => (
   <div className="flex items-center gap-2.5 px-3 py-2 bg-[#1a2e45] border border-[#60a5fa]/60 rounded-xl shadow-xl shadow-[#60a5fa]/20 opacity-90 cursor-grabbing select-none max-w-[180px]">
     <div className="w-7 h-7 shrink-0 rounded-full bg-gradient-to-br from-[#c9a84c] to-[#f5e6c0] text-[#0d1b2a] flex items-center justify-center font-bold text-[10px]">
       {guest.name[0]}
     </div>
-    <span className="text-xs text-[#faf6ef] font-semibold truncate">
-      {guest.name}
-    </span>
+    <span className="text-xs text-[#faf6ef] font-semibold truncate">{guest.name}</span>
   </div>
 );
 
@@ -328,7 +418,6 @@ const AddTablePrompt: React.FC<AddTablePromptProps> = ({ onConfirm, onCancel }) 
         className="bg-[#0d1b2a] border border-[#c9a84c]/30 rounded-2xl w-full max-w-sm shadow-2xl p-5 space-y-4"
       >
         <h2 className="font-serif text-[#e8c97e] text-base">שולחן חדש</h2>
-
         <div>
           <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-1">
             שם השולחן
@@ -342,13 +431,10 @@ const AddTablePrompt: React.FC<AddTablePromptProps> = ({ onConfirm, onCancel }) 
             className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#c9a84c]/50 placeholder-white/20"
           />
         </div>
-
         <div>
-          <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-2">
-            צורה
-          </label>
+          <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-2">צורה</label>
           <div className="grid grid-cols-4 gap-2">
-            {SHAPES.map((s) => (
+            {TABLE_SHAPES.map((s) => (
               <button
                 type="button"
                 key={s.id}
@@ -365,23 +451,82 @@ const AddTablePrompt: React.FC<AddTablePromptProps> = ({ onConfirm, onCancel }) 
             ))}
           </div>
         </div>
+        <div className="flex justify-end gap-2 pt-1">
+          <button type="button" onClick={onCancel} className="px-4 py-2 text-sm text-white/50 hover:text-white transition">
+            ביטול
+          </button>
+          <button type="submit" className="px-5 py-2 bg-[#c9a84c] text-[#0d1b2a] rounded-lg text-sm font-bold hover:scale-105 transition">
+            הוסף
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+};
+
+// ─── Add Element Prompt ───────────────────────────────────────────────────────
+
+interface AddElementPromptProps {
+  onConfirm: (name: string, type: TableType) => void;
+  onCancel: () => void;
+}
+
+const AddElementPrompt: React.FC<AddElementPromptProps> = ({ onConfirm, onCancel }) => {
+  const [selected, setSelected] = useState(ELEMENTS[0]);
+  const [name, setName] = useState(ELEMENTS[0].defaultName);
+
+  const handleSelect = (el: typeof ELEMENTS[0]) => {
+    setSelected(el);
+    setName(el.defaultName);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/65 backdrop-blur-sm">
+      <div className="bg-[#0d1b2a] border border-[#c9a84c]/30 rounded-2xl w-full max-w-sm shadow-2xl p-5 space-y-4">
+        <h2 className="font-serif text-[#e8c97e] text-base">הוסף אלמנט</h2>
+
+        {/* Element type picker */}
+        <div className="grid grid-cols-2 gap-2">
+          {ELEMENTS.map((el) => (
+            <button
+              key={el.type}
+              onClick={() => handleSelect(el)}
+              className={`flex items-center justify-center p-3 rounded-xl border transition-all text-sm font-semibold ${
+                selected.type === el.type
+                  ? 'bg-[#c9a84c]/20 border-[#c9a84c] text-[#e8c97e]'
+                  : 'bg-white/5 border-white/10 text-white/50 hover:text-white/80'
+              }`}
+            >
+              {el.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Custom name */}
+        <div>
+          <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-1">
+            שם (אופציונלי)
+          </label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#c9a84c]/50"
+          />
+        </div>
 
         <div className="flex justify-end gap-2 pt-1">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-4 py-2 text-sm text-white/50 hover:text-white transition"
-          >
+          <button onClick={onCancel} className="px-4 py-2 text-sm text-white/50 hover:text-white transition">
             ביטול
           </button>
           <button
-            type="submit"
+            onClick={() => onConfirm(name || selected.defaultName, selected.type)}
             className="px-5 py-2 bg-[#c9a84c] text-[#0d1b2a] rounded-lg text-sm font-bold hover:scale-105 transition"
           >
             הוסף
           </button>
         </div>
-      </form>
+      </div>
     </div>
   );
 };
@@ -407,36 +552,52 @@ const SeatingEngine: React.FC = () => {
     setActiveTable,
   } = useSeatingStore();
 
-  // ── Initialise on mount ───────────────────────────────────────────────────
+  // ── Init ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     fetchTables();
     fetchGuests();
   }, [fetchTables, fetchGuests]);
 
-  // ── Local UI state ────────────────────────────────────────────────────────
+  // ── UI state ──────────────────────────────────────────────────────────────
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [showAddPrompt, setShowAddPrompt] = useState(false);
+  const [showAddElementPrompt, setShowAddElementPrompt] = useState(false);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [hoveredTableId, setHoveredTableId] = useState<string | null>(null);
 
-  // Canvas ref — used to convert px deltas → percentage positions
   const canvasRef = useRef<HTMLDivElement>(null);
-
-  // Snapshot the pre-drag position so we can roll back if the API call fails
   const preDragPos = useRef<{ x: number; y: number } | null>(null);
 
-  // ── dnd-kit sensors ───────────────────────────────────────────────────────
+  // ── Sensors ───────────────────────────────────────────────────────────────
   const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 8 } })
+    useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } })
   );
 
-  // ── DnD handlers ──────────────────────────────────────────────────────────
+  // ── Custom collision detection ────────────────────────────────────────────
+  // Guests: closestCenter among ONLY table/table-detail droppables (canvas excluded)
+  //   → prevents the huge canvas droppable from winning and causing wrong-table drops
+  // Tables: pointerWithin (only trigger when pointer is inside the droppable)
+  const collisionDetection: CollisionDetection = useCallback((args) => {
+    const activeType = (args.active as any)?.data?.current?.type;
+    if (activeType === 'guest') {
+      // Only register a hit when the pointer is actually inside a table element.
+      // pointerWithin returns [] when hovering empty canvas space → no accidental seats.
+      const eligible = args.droppableContainers.filter((c) => {
+        const t = c.data?.current?.type;
+        return t === 'table' || t === 'table-detail';
+      });
+      if (eligible.length === 0) return [];
+      return pointerWithin({ ...args, droppableContainers: eligible });
+    }
+    return pointerWithin(args);
+  }, []);
+
+  // ── DnD handlers ─────────────────────────────────────────────────────────
 
   const handleDragStart = useCallback(
     ({ active }: DragStartEvent) => {
       setActiveDragId(String(active.id));
-
       if (active.data.current?.type === 'table') {
         const table = tables.find((t) => t._id === active.data.current?.tableId);
         if (table) preDragPos.current = { x: table.x, y: table.y };
@@ -462,7 +623,7 @@ const SeatingEngine: React.FC = () => {
       const activeType = active.data.current?.type;
 
       if (activeType === 'table') {
-        // ── Table repositioning ──────────────────────────────────────────────
+        // ── Table repositioning ────────────────────────────────────────────
         const tableId = active.data.current?.tableId as string;
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -471,16 +632,12 @@ const SeatingEngine: React.FC = () => {
         const table = tables.find((t) => t._id === tableId);
         if (!table) return;
 
-        const rawX = table.x + (delta.x / rect.width)  * 100;
+        const rawX = table.x + (delta.x / rect.width) * 100;
         const rawY = table.y + (delta.y / rect.height) * 100;
-
         const newX = snap(rawX, 2, 97);
         const newY = snap(rawY, 2, 97);
 
-        // Immediate local update so the table snaps to the new position now
         updateTableLocal(tableId, { x: newX, y: newY });
-
-        // Debounced API save with pre-drag rollback coordinates
         debouncedSavePosition(
           tableId,
           newX,
@@ -490,40 +647,51 @@ const SeatingEngine: React.FC = () => {
         );
         preDragPos.current = null;
 
-      } else if (
-        activeType === 'guest' &&
-        over?.data.current?.type === 'table'
-      ) {
-        // ── Guest assignment ─────────────────────────────────────────────────
-        const guestId  = active.data.current?.guestId  as string;
-        const tableId  = over.data.current?.tableId    as string;
-        seatGuest(guestId, tableId);
-        setActiveTable(tableId);
+      } else if (activeType === 'guest') {
+        // ── Guest assignment ───────────────────────────────────────────────
+        const guestId = active.data.current?.guestId as string;
+        let targetTableId: string | null = null;
+
+        const overType = over?.data.current?.type;
+
+        if (overType === 'table') {
+          // Dropped directly on a table element
+          targetTableId = over!.data.current?.tableId as string;
+        } else if (overType === 'table-detail') {
+          // Dropped on the right-side detail panel
+          targetTableId = over!.data.current?.tableId as string;
+        }
+        // No fallback — dropping on empty canvas does nothing
+
+        if (targetTableId) {
+          seatGuest(guestId, targetTableId);
+          setActiveTable(targetTableId);
+        }
       }
     },
     [tables, updateTableLocal, debouncedSavePosition, seatGuest, setActiveTable]
   );
 
-  // ── Derived data ───────────────────────────────────────────────────────────
-  const activeTable  = tables.find((t) => t._id === activeTableId) ?? null;
-  const seatedCount  = tables.reduce((acc, t) => acc + t.seatedGuests.length, 0);
-
-  // Determine what the DragOverlay should render
-  const activeDragTable = activeDragId?.startsWith('drag-')
-    ? tables.find((t) => t._id === activeDragId.replace('drag-', ''))
-    : null;
+  // ── Derived ───────────────────────────────────────────────────────────────
+  const activeTable = tables.find((t) => t._id === activeTableId) ?? null;
+  const seatedCount = tables.reduce((acc, t) => acc + t.seatedGuests.length, 0);
 
   const activeDragGuest = activeDragId?.startsWith('guest-')
     ? guests.find((g) => g._id === activeDragId.replace('guest-', ''))
     : null;
 
-  // ── Add table flow ─────────────────────────────────────────────────────────
+  // ── Add table / element ──────────────────────────────────────────────────
   const handleAddTable = useCallback(async (name: string, type: TableType) => {
     setShowAddPrompt(false);
     await addTable(name, type);
   }, [addTable]);
 
-  // ── Config modal helpers ───────────────────────────────────────────────────
+  const handleAddElement = useCallback(async (name: string, type: TableType) => {
+    setShowAddElementPrompt(false);
+    await addTable(name, type);
+  }, [addTable]);
+
+  // ── Config modal helpers ─────────────────────────────────────────────────
   const handleConfigUpdate = useCallback(
     (updates: Partial<SeatingTable>) => {
       if (!activeTableId) return;
@@ -532,13 +700,25 @@ const SeatingEngine: React.FC = () => {
     [activeTableId, updateTableConfig]
   );
 
+  const handleConfigUpdateLocal = useCallback(
+    (updates: Partial<SeatingTable>) => {
+      if (!activeTableId) return;
+      updateTableLocal(activeTableId, updates);
+    },
+    [activeTableId, updateTableLocal]
+  );
+
   const handleConfigDelete = useCallback(() => {
     if (!activeTableId) return;
     setShowConfigModal(false);
     deleteTable(activeTableId);
   }, [activeTableId, deleteTable]);
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  const handleDoubleClickTable = useCallback(() => {
+    if (activeTableId) setShowConfigModal(true);
+  }, [activeTableId]);
+
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div
       dir="rtl"
@@ -546,17 +726,17 @@ const SeatingEngine: React.FC = () => {
     >
       {/* ── Modals ──────────────────────────────────────────────────────────── */}
       {showAddPrompt && (
-        <AddTablePrompt
-          onConfirm={handleAddTable}
-          onCancel={() => setShowAddPrompt(false)}
-        />
+        <AddTablePrompt onConfirm={handleAddTable} onCancel={() => setShowAddPrompt(false)} />
       )}
-
+      {showAddElementPrompt && (
+        <AddElementPrompt onConfirm={handleAddElement} onCancel={() => setShowAddElementPrompt(false)} />
+      )}
       {showConfigModal && activeTable && (
         <TableConfigModal
           table={activeTable}
           onClose={() => setShowConfigModal(false)}
           onUpdate={handleConfigUpdate}
+          onUpdateLocal={handleConfigUpdateLocal}
           onDelete={handleConfigDelete}
         />
       )}
@@ -571,7 +751,7 @@ const SeatingEngine: React.FC = () => {
 
       {/* ── Toolbar ─────────────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row flex-wrap items-center justify-between gap-3 bg-[#0d1b2a]/90 border border-[#c9a84c]/15 rounded-2xl px-4 py-3 mb-5 backdrop-blur-md shrink-0">
-        {/* Stats badge */}
+        {/* Stats */}
         <div className="flex items-center gap-3 text-xs text-white/40">
           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#c9a84c]/10 border border-[#c9a84c]/25 rounded-full text-[#e8c97e] font-semibold">
             <Users size={13} />
@@ -579,7 +759,7 @@ const SeatingEngine: React.FC = () => {
           </div>
           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full">
             <LayoutGrid size={12} />
-            {tables.length} שולחנות
+            {tables.length} פריטים
           </div>
         </div>
 
@@ -590,9 +770,15 @@ const SeatingEngine: React.FC = () => {
               onClick={() => setShowConfigModal(true)}
               className="flex items-center gap-1.5 px-3 py-2 bg-[#c9a84c]/15 border border-[#c9a84c]/40 rounded-lg text-xs font-semibold text-[#e8c97e] hover:bg-[#c9a84c]/25 transition shadow-[0_0_10px_rgba(201,168,76,0.15)]"
             >
-              <Settings size={13} /> הגדרות שולחן
+              <Settings size={13} /> הגדרות
             </button>
           )}
+          <button
+            onClick={() => setShowAddElementPrompt(true)}
+            className="flex items-center gap-1.5 px-3 py-2 bg-purple-900/30 border border-purple-500/30 rounded-lg text-xs font-semibold text-purple-300 hover:bg-purple-900/50 transition"
+          >
+            <Layers size={13} /> הוסף אלמנט
+          </button>
           <button
             onClick={() => setShowAddPrompt(true)}
             className="flex items-center gap-1.5 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-xs font-semibold hover:bg-white/10 transition"
@@ -605,12 +791,11 @@ const SeatingEngine: React.FC = () => {
       {/* ── DnD Context ─────────────────────────────────────────────────────── */}
       <DndContext
         sensors={sensors}
-        collisionDetection={pointerWithin}
+        collisionDetection={collisionDetection}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        {/* ── Main grid ───────────────────────────────────────────────────── */}
         <div className="flex-1 flex flex-col lg:grid lg:grid-cols-12 gap-4 min-h-[500px] lg:min-h-[650px]">
           {/* Guest sidebar */}
           <div className="lg:col-span-3 h-[230px] lg:h-full order-2 lg:order-1">
@@ -635,6 +820,7 @@ const SeatingEngine: React.FC = () => {
               hoveredTableId={hoveredTableId}
               isLoading={isLoadingTables}
               onSelectTable={setActiveTable}
+              onDoubleClickTable={handleDoubleClickTable}
             />
           </div>
 
@@ -653,9 +839,8 @@ const SeatingEngine: React.FC = () => {
           </div>
         </div>
 
-        {/* ── Drag overlay (ghost element that follows the cursor) ───────── */}
+        {/* Drag overlay — only for guests (tables move via their own CSS transform) */}
         <DragOverlay dropAnimation={null}>
-          {activeDragTable && <TableDragGhost table={activeDragTable} />}
           {activeDragGuest && <GuestDragGhost guest={activeDragGuest} />}
         </DragOverlay>
       </DndContext>
