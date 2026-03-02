@@ -1,6 +1,6 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
-export type TableType = 'round' | 'rect' | 'square' | 'oval';
+export type TableType = 'round' | 'rect' | 'square' | 'oval' | 'dj' | 'dance' | 'bar' | 'stage';
 
 export interface ITable extends Document {
   name: string;
@@ -27,12 +27,12 @@ const tableSchema = new Schema<ITable>(
     },
     type: {
       type: String,
-      enum: ['round', 'rect', 'square', 'oval'],
+      enum: ['round', 'rect', 'square', 'oval', 'dj', 'dance', 'bar', 'stage'],
       default: 'round',
     },
     x: { type: Number, default: 10, min: 0, max: 100 },
     y: { type: Number, default: 10, min: 0, max: 100 },
-    capacity: { type: Number, default: 8, min: 1, max: 50 },
+    capacity: { type: Number, default: 8, min: 0, max: 200 },
     rotation: { type: Number, default: 0 },
     size: { type: Number, default: 1, min: 0.5, max: 2.5 },
     seatedGuests: [{ type: Schema.Types.ObjectId, ref: 'Guest' }],
