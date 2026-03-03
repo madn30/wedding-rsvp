@@ -32,6 +32,7 @@ import {
 import toast from 'react-hot-toast';
 
 import Canvas from '../components/seating/Canvas';
+import { getTableDims } from '../components/seating/TableItem';
 import GuestSidebar from '../components/seating/GuestSidebar';
 import { SeatingGuest, SeatingTable, TableType, useSeatingStore } from '../store/seatingStore';
 
@@ -568,6 +569,23 @@ const SeatingEngine: React.FC = () => {
   const canvasRef = useRef<HTMLDivElement>(null);
   const preDragPos = useRef<{ x: number; y: number } | null>(null);
 
+  // ── Canvas dimensions (responsive table sizes + live drag clamping) ────────
+  const REFERENCE_CANVAS_WIDTH = 600;
+  const [canvasScale, setCanvasScale] = useState(1);
+  const [canvasDims, setCanvasDims] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      const { width, height } = entries[0].contentRect;
+      if (width > 0) {
+        setCanvasScale(Math.max(0.45, Math.min(1.4, width / REFERENCE_CANVAS_WIDTH)));
+        setCanvasDims({ w: width, h: height });
+      }
+    });
+    observer.observe(canvasRef.current);
+    return () => observer.disconnect();
+  }, []);
+
   // ── Sensors ───────────────────────────────────────────────────────────────
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
@@ -634,8 +652,12 @@ const SeatingEngine: React.FC = () => {
 
         const rawX = table.x + (delta.x / rect.width) * 100;
         const rawY = table.y + (delta.y / rect.height) * 100;
-        const newX = snap(rawX, 2, 97);
-        const newY = snap(rawY, 2, 97);
+        // Clamp based on actual scaled table size so edges stay within canvas
+        const dims = getTableDims(table.type, table.size);
+        const halfWpct = ((dims.w * canvasScale) / 2 / rect.width) * 100;
+        const halfHpct = ((dims.h * canvasScale) / 2 / rect.height) * 100;
+        const newX = snap(rawX, halfWpct, 100 - halfWpct);
+        const newY = snap(rawY, halfHpct, 100 - halfHpct);
 
         updateTableLocal(tableId, { x: newX, y: newY });
         debouncedSavePosition(
@@ -669,7 +691,7 @@ const SeatingEngine: React.FC = () => {
         }
       }
     },
-    [tables, updateTableLocal, debouncedSavePosition, seatGuest, setActiveTable]
+    [tables, canvasScale, updateTableLocal, debouncedSavePosition, seatGuest, setActiveTable]
   );
 
   // ── Derived ───────────────────────────────────────────────────────────────
@@ -811,8 +833,8 @@ const SeatingEngine: React.FC = () => {
             />
           </div>
 
-          {/* Canvas */}
-          <div className="lg:col-span-6 flex-1 lg:h-full order-1 lg:order-2">
+          {/* Canvas — flex flex-col + min-h-0 so flex-1 inside resolves correctly */}
+          <div className="lg:col-span-6 flex-1 lg:h-full order-1 lg:order-2 flex flex-col min-h-0">
             <Canvas
               ref={canvasRef}
               tables={tables}
@@ -821,6 +843,8 @@ const SeatingEngine: React.FC = () => {
               isLoading={isLoadingTables}
               onSelectTable={setActiveTable}
               onDoubleClickTable={handleDoubleClickTable}
+              canvasScale={canvasScale}
+              canvasDims={canvasDims}
             />
           </div>
 
