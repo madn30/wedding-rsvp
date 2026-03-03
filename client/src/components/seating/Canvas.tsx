@@ -16,10 +16,31 @@ interface CanvasProps {
   canvasScale?: number;
   /** Actual canvas pixel dimensions for live drag clamping */
   canvasDims?: { w: number; h: number };
+  /** True while any item is being dragged (dims the grid) */
+  isDragging?: boolean;
+  /** True while a TABLE specifically is being dragged (suppresses guest-hover highlights) */
+  isDraggingTable?: boolean;
+  /** The table ID that just landed — it shows the lock-flash animation */
+  justDroppedTableId?: string | null;
 }
 
 const Canvas = forwardRef<HTMLDivElement, CanvasProps>(
-  ({ tables, activeTableId, hoveredTableId, isLoading, onSelectTable, onDoubleClickTable, canvasScale = 1, canvasDims }, ref) => {
+  (
+    {
+      tables,
+      activeTableId,
+      hoveredTableId,
+      isLoading,
+      onSelectTable,
+      onDoubleClickTable,
+      canvasScale = 1,
+      canvasDims,
+      isDragging = false,
+      isDraggingTable = false,
+      justDroppedTableId = null,
+    },
+    ref
+  ) => {
     const { setNodeRef: setDropRef } = useDroppable({
       id: 'canvas',
       data: { type: 'canvas' },
@@ -37,12 +58,15 @@ const Canvas = forwardRef<HTMLDivElement, CanvasProps>(
         className="relative w-full flex-1 rounded-2xl shadow-2xl select-none overflow-hidden"
         style={{
           background: 'radial-gradient(ellipse at center, #243b5540 0%, #0d1b2a 100%)',
-          backgroundImage: `
-            radial-gradient(ellipse at center, #243b5540 0%, #0d1b2a 100%),
-            repeating-linear-gradient(0deg, transparent, transparent 29px, rgba(255,255,255,0.022) 30px),
-            repeating-linear-gradient(90deg, transparent, transparent 29px, rgba(255,255,255,0.022) 30px)
-          `,
+          backgroundImage: isDragging
+            ? 'radial-gradient(ellipse at center, #243b5540 0%, #0d1b2a 100%)'
+            : `
+              radial-gradient(ellipse at center, #243b5540 0%, #0d1b2a 100%),
+              repeating-linear-gradient(0deg, transparent, transparent 29px, rgba(255,255,255,0.022) 30px),
+              repeating-linear-gradient(90deg, transparent, transparent 29px, rgba(255,255,255,0.022) 30px)
+            `,
           border: '1px solid rgba(201,168,76,0.12)',
+          transition: 'background-image 0.15s',
         }}
         onClick={() => onSelectTable(null)}
       >
@@ -73,6 +97,8 @@ const Canvas = forwardRef<HTMLDivElement, CanvasProps>(
             onDoubleClick={onDoubleClickTable}
             canvasScale={canvasScale}
             canvasDims={canvasDims}
+            isDraggingTable={isDraggingTable}
+            isJustDropped={justDroppedTableId === table._id}
           />
         ))}
       </div>

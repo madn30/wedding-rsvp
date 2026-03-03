@@ -13,6 +13,10 @@ interface TableItemProps {
   canvasScale?: number;
   /** Actual canvas pixel dimensions — used to clamp drag within bounds */
   canvasDims?: { w: number; h: number };
+  /** True while a TABLE (not a guest) is being dragged — suppresses guest-hover highlights */
+  isDraggingTable?: boolean;
+  /** True immediately after this table was successfully dropped — triggers lock-flash */
+  isJustDropped?: boolean;
 }
 
 // ─── Element types (floor decorations, no seating) ───────────────────────────
@@ -70,7 +74,17 @@ function getBorderRadius(type: string): string {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 const TableItem: React.FC<TableItemProps> = memo(
-  ({ table, isSelected, isGuestHovering, onSelect, onDoubleClick, canvasScale = 1, canvasDims }) => {
+  ({
+    table,
+    isSelected,
+    isGuestHovering,
+    onSelect,
+    onDoubleClick,
+    canvasScale = 1,
+    canvasDims,
+    isDraggingTable = false,
+    isJustDropped = false,
+  }) => {
     const isElem = isElementType(table.type);
 
     // Draggable — for repositioning on the canvas
@@ -107,7 +121,9 @@ const TableItem: React.FC<TableItemProps> = memo(
     const baseDims = getTableDims(table.type, table.size);
     // Scale dimensions proportionally to canvas size
     const dims = { w: Math.round(baseDims.w * canvasScale), h: Math.round(baseDims.h * canvasScale) };
-    const highlighting = !isElem && (isGuestOver || isGuestHovering);
+
+    // Guest hover highlight — suppressed while a table is being dragged
+    const highlighting = !isElem && !isDraggingTable && (isGuestOver || isGuestHovering);
 
     const rawTranslateX = transform?.x ?? 0;
     const rawTranslateY = transform?.y ?? 0;
@@ -123,6 +139,13 @@ const TableItem: React.FC<TableItemProps> = memo(
       translateX = Math.max(halfWpx - centerX, Math.min(canvasDims.w - halfWpx - centerX, rawTranslateX));
       translateY = Math.max(halfHpx - centerY, Math.min(canvasDims.h - halfHpx - centerY, rawTranslateY));
     }
+
+    // Transition: slower fade-out after the drop flash, instant while dragging
+    const transition = isDragging
+      ? 'none'
+      : isJustDropped
+      ? 'none'
+      : 'border-color 0.12s, box-shadow 0.55s ease-out, background 0.12s';
 
     // ── Shared base style ────────────────────────────────────────────────────
     const baseStyle: React.CSSProperties = {
@@ -140,8 +163,10 @@ const TableItem: React.FC<TableItemProps> = memo(
       cursor: isDragging ? 'grabbing' : 'grab',
       // GPU layer always on for smooth dragging and rotation/size changes
       willChange: 'transform',
-      transition: isDragging ? 'none' : 'border-color 0.12s, box-shadow 0.12s, background 0.12s',
+      transition,
       userSelect: 'none',
+      // Flash animation on drop
+      animation: isJustDropped ? 'table-lock-flash 0.7s ease-out forwards' : 'none',
       // Critical for mobile: prevents scroll from interfering with drag
       touchAction: 'none',
     };
@@ -165,7 +190,11 @@ const TableItem: React.FC<TableItemProps> = memo(
     // ── Element rendering ────────────────────────────────────────────────────
     if (isElem) {
       const cfg = getElementConfig(table.type);
-      const borderColor = isSelected ? '#c9a84c' : cfg.border;
+      const borderColor = isJustDropped
+        ? '#c9a84c'
+        : isSelected
+        ? '#c9a84c'
+        : cfg.border;
       const boxShadow = isSelected
         ? `0 0 0 2px #c9a84c, 0 0 20px rgba(201,168,76,0.35)`
         : `0 4px 16px rgba(0,0,0,0.5)`;
@@ -200,7 +229,9 @@ const TableItem: React.FC<TableItemProps> = memo(
     }
 
     // ── Table rendering ──────────────────────────────────────────────────────
-    const borderColor = isSelected
+    const borderColor = isJustDropped
+      ? '#c9a84c'
+      : isSelected
       ? '#c9a84c'
       : highlighting
       ? '#60a5fa'
@@ -247,7 +278,7 @@ const TableItem: React.FC<TableItemProps> = memo(
             <span className="text-[9px] text-red-400 mt-0.5 font-semibold">מלא</span>
           )}
           {highlighting && !isFull && (
-            <span className="text-[9px] text-[#60a5fa] mt-0.5">+ שבץ</span>
+            <span className="text-[9px] text-[#60a5fa] mt-0.5 animate-pulse">⬇ שחרר</span>
           )}
         </div>
       </div>
