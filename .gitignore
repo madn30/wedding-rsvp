@@ -1,13 +1,13 @@
 # Node modules
 node_modules/
+client/node_modules/
+server/node_modules/
 
 # WhatsApp session credentials — contains your eSIM auth tokens, NEVER commit
 .wwebjs_auth/
 .wwebjs_cache/
-client/node_modules/
-server/node_modules/
 
-# Build / cache
+# Build / cache outputs
 dist/
 build/
 client/dist/
@@ -31,8 +31,9 @@ claw-*
 .DS_Store
 Thumbs.db
 
-# Vite / Tailwind / TS
+# Vite / Tailwind / TypeScript
 client/.vite/
 client/.turbo/
 client/.tsbuildinfo
 server/.tsbuildinfo
+
