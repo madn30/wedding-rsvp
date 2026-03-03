@@ -27,7 +27,6 @@ app.set('trust proxy', 1);
 app.use(cors({
   // origin: 'https://wedding-rsvp-9d1c.onrender.com', // Verified URL
   origin: 'https://wedding-rsvp-9d1c.onrender.com',
-  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
