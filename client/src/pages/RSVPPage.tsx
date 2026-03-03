@@ -4,7 +4,7 @@ import { RSVPData, RSVPResponse } from '../types';
 import { getRSVP } from '../services/authService';
 import { RSVPButtons } from '../components/guest/RSVPButtons';
 import { FullPageLoader } from '../components/ui';
-import { Heart, Calendar, MapPin, Sparkles, CheckCircle2, XCircle, HelpCircle, AlertCircle } from 'lucide-react';
+import { Heart, Calendar, MapPin, Sparkles, CheckCircle2, XCircle, HelpCircle, AlertCircle, Lock } from 'lucide-react';
 
 const RESPONSE_MESSAGES: Record<NonNullable<RSVPResponse>, { text: string; icon: React.ReactNode; color: string }> = {
   yes:   { text: 'נהדר! אנחנו שמחים שתגיעו',  icon: <CheckCircle2 size={48} />, color: '#c9a84c' },
@@ -109,6 +109,19 @@ export const RSVPPage = () => {
               </p>
             </div>
 
+            {/* Feature 3: Event expired / locked banner */}
+            {data.isExpired && (
+              <div className="mb-6 bg-white/5 border border-white/10 rounded-2xl p-5 flex items-start gap-3">
+                <Lock size={18} className="text-white/40 shrink-0 mt-0.5" />
+                <div className="text-right">
+                  <p className="text-[#faf6ef] text-sm font-semibold">האירוע הסתיים</p>
+                  <p className="text-white/40 text-xs mt-1 leading-relaxed">
+                    The event is over and RSVP updates are closed.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Response area */}
             {submitted ? (
               <div className="bg-[#c9a84c]/5 border border-[#c9a84c]/20 rounded-2xl p-8 animate-in slide-in-from-bottom-4 duration-500">
@@ -120,7 +133,7 @@ export const RSVPPage = () => {
                     {RESPONSE_MESSAGES[submitted].text}
                   </h3>
                   <p className="text-white/40 text-sm">תשובתך נרשמה במערכת</p>
-                  
+
                   {data.respondedAt && (
                     <div className="mt-6 pt-4 border-t border-white/5 w-full">
                       <p className="text-[10px] uppercase tracking-widest text-white/20">
@@ -130,7 +143,7 @@ export const RSVPPage = () => {
                   )}
                 </div>
               </div>
-            ) : (
+            ) : data.isExpired ? null : (
               <div className="w-full space-y-4">
                 <p className="text-[#e8c97e] text-xs font-bold tracking-widest uppercase mb-4">אנא אשרו הגעתכם:</p>
                 <RSVPButtons token={token!} onSuccess={setSubmitted} />

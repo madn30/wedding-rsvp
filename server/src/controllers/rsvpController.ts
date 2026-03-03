@@ -1,6 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import { Guest } from '../models/Guest';
+import { AppSettings } from '../models/AppSettings';
 import { AppError, asyncHandler } from '../utils/helpers';
+import { isWhatsAppReady, sendDeclinedReply } from '../whatsapp';
+
+/** Wedding date used for expiration logic (Feature 3) */
+const WEDDING_DATE = new Date('2026-02-10T00:00:00.000+02:00');
 
 // GET /api/rsvp/:token
 export const getRSVP = asyncHandler(
@@ -11,6 +16,10 @@ export const getRSVP = asyncHandler(
     if (!guest) {
       return next(new AppError('RSVP link is invalid or has expired.', 404));
     }
+
+    // Feature 3: Inform the client whether RSVP editing is still allowed
+    const settings = await AppSettings.getSingleton();
+    const isExpired = new Date() > WEDDING_DATE || settings.rsvpLocked;
 
     res.status(200).json({
       success: true,
@@ -25,15 +34,24 @@ export const getRSVP = asyncHandler(
         coupleNames: process.env.COUPLE_NAMES || 'החתן והכלה',
         weddingDate: process.env.WEDDING_DATE || '',
         venue: process.env.WEDDING_VENUE || '',
+        isExpired,
       },
     });
   }
 );
 
 // POST /api/rsvp/:token
-// Re-submissions are allowed — guests can update their response at any time.
+// Re-submissions are allowed — guests can update their response until event expiry.
 export const submitRSVP = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
+    // Feature 3: Reject submissions after the wedding date or if manually locked
+    const settings = await AppSettings.getSingleton();
+    if (new Date() > WEDDING_DATE || settings.rsvpLocked) {
+      return next(
+        new AppError('The event is over and RSVP updates are closed.', 403)
+      );
+    }
+
     const {
       response,
       numberOfGuests,
@@ -47,6 +65,7 @@ export const submitRSVP = asyncHandler(
       return next(new AppError('RSVP link is invalid or has expired.', 404));
     }
 
+    const previousResponse = guest.response;
     guest.response = response;
     guest.respondedAt = new Date();
 
@@ -65,6 +84,14 @@ export const submitRSVP = asyncHandler(
     }
 
     await guest.save();
+
+    // Feature 1: Auto-reply when guest declines (first-time or re-decline)
+    if (response === 'no' && previousResponse !== 'no' && isWhatsAppReady()) {
+      const { declinedReply } = settings.templates;
+      sendDeclinedReply(guest.phone, guest.name, declinedReply).catch((err) =>
+        console.error('[RSVP] Failed to send declined auto-reply:', err)
+      );
+    }
 
     res.status(200).json({
       success: true,

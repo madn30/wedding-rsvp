@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { LayoutDashboard, Users, Armchair, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, Armchair, LogOut, MessageSquare } from 'lucide-react';
 
 interface AdminSidebarProps {
   isOpen: boolean;
@@ -8,9 +8,10 @@ interface AdminSidebarProps {
 }
 
 const NAV_ITEMS = [
-  { to: '/admin/dashboard', icon: <LayoutDashboard size={18} />, label: 'לוח בקרה' },
-  { to: '/admin/guests',    icon: <Users size={18} />,           label: 'אורחים'   },
-  { to: '/admin/seating',   icon: <Armchair size={18} />,        label: 'סידורי הושבה' },
+  { to: '/admin/dashboard',      icon: <LayoutDashboard size={18} />, label: 'לוח בקרה'       },
+  { to: '/admin/guests',         icon: <Users size={18} />,           label: 'אורחים'          },
+  { to: '/admin/seating',        icon: <Armchair size={18} />,        label: 'סידורי הושבה'    },
+  { to: '/admin/message-center', icon: <MessageSquare size={18} />,   label: 'מרכז הודעות'    },
 ];
 
 export const AdminSidebar = ({ isOpen, onClose }: AdminSidebarProps) => {

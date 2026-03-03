@@ -7,6 +7,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { GuestsPage }    from './pages/GuestsPage';
 import { RSVPPage }      from './pages/RSVPPage';
 import SeatingEngine from './pages/SeatingEngine';
+import { MessageCenterPage } from './pages/MessageCenterPage';
 
 const App = () => (
   <AuthProvider>
@@ -35,7 +36,8 @@ const App = () => (
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="guests"    element={<GuestsPage />} />
         {/* Remove the leading slash here */}
-        <Route path="seating"   element={<SeatingEngine />} /> 
+        <Route path="seating"         element={<SeatingEngine />} />
+        <Route path="message-center"  element={<MessageCenterPage />} />
       </Route>
       {/* Fallback */}
       <Route path="/"  element={<Navigate to="/admin/login" replace />} />

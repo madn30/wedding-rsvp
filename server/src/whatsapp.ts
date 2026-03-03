@@ -20,6 +20,30 @@ const qrcode = require('qrcode-terminal') as {
   generate: (text: string, opts?: { small?: boolean }) => void;
 };
 
+// ── Calendar / Waze link builders (exported for use in messages) ──────────────
+
+/**
+ * Build a Google Calendar "Add event" link for the wedding.
+ */
+export const buildCalendarLink = (): string => {
+  const title = encodeURIComponent(
+    `חתונת ${process.env.COUPLE_NAMES || 'החתן והכלה'}`
+  );
+  const venue = encodeURIComponent(process.env.WEDDING_VENUE || '');
+  return (
+    `https://calendar.google.com/calendar/render?action=TEMPLATE` +
+    `&text=${title}&dates=20260210/20260211&location=${venue}`
+  );
+};
+
+/**
+ * Build a Waze navigation deep-link to the wedding venue.
+ */
+export const buildWazeLink = (): string => {
+  const venue = encodeURIComponent(process.env.WEDDING_VENUE || 'כתובת האירוע');
+  return `https://www.waze.com/ul?q=${venue}`;
+};
+
 // ── Singleton state ───────────────────────────────────────────────────────────
 
 let client: Client | null = null;
@@ -43,8 +67,8 @@ export const initWhatsAppClient = (): void => {
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
         '--disable-gpu',
-        '--single-process',        // ← add this
-        '--no-zygote',             // ← add this
+        '--single-process',
+        '--no-zygote',
       ],
     },
   });
@@ -174,4 +198,53 @@ export const sendWhatsAppMessage = async (
   }
 
   await client.sendMessage(chatId, message);
+};
+
+/**
+ * Build the full interactive invitation message text for a guest.
+ * Includes the RSVP link, "Add to Calendar" link, and all personalisation.
+ */
+export const buildInvitationMessage = (
+  guestName: string,
+  rsvpLink: string,
+  customTemplate?: string
+): string => {
+  const coupleNames = process.env.COUPLE_NAMES || 'החתן והכלה';
+  const weddingDate = process.env.WEDDING_DATE || '10.02.2026';
+  const venue = process.env.WEDDING_VENUE || '';
+  const calendarLink = buildCalendarLink();
+
+  const template =
+    customTemplate ||
+    'היי {{guest_name}}, אנחנו שמחים להזמין אותך לחתונה של {{couple_names}}!\n' +
+    '📅 {{wedding_date}}\n📍 {{venue}}\n\n' +
+    '✅ אשרו הגעה:\n{{rsvp_link}}\n\n' +
+    '📆 הוסף ליומן:\n{{calendar_link}}';
+
+  return template
+    .replace(/\{\{guest_name\}\}/g, guestName)
+    .replace(/\{\{couple_names\}\}/g, coupleNames)
+    .replace(/\{\{wedding_date\}\}/g, weddingDate)
+    .replace(/\{\{venue\}\}/g, venue)
+    .replace(/\{\{rsvp_link\}\}/g, rsvpLink)
+    .replace(/\{\{calendar_link\}\}/g, calendarLink)
+    .replace(/\{\{waze_link\}\}/g, buildWazeLink());
+};
+
+/**
+ * Send the "declined" auto-reply to a guest who has responded "no".
+ * Template supports {{guest_name}} placeholder.
+ */
+export const sendDeclinedReply = async (
+  phone: string,
+  guestName: string,
+  template?: string
+): Promise<void> => {
+  const message = (
+    template ||
+    'חבל שלא תוכלו להגיע, {{guest_name}} 💛\nתודה שעדכנתם אותנו — נתגעגע אליכם!'
+  ).replace(/\{\{guest_name\}\}/g, guestName);
+
+  await randomDelay();
+  await sendWhatsAppMessage(phone, message);
 };
