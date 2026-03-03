@@ -68,6 +68,8 @@ export interface RSVPData {
   coupleNames: string;
   weddingDate: string;
   venue: string;
+  /** True when the wedding date has passed or admin has manually locked forms */
+  isExpired?: boolean;
 }
 
 export interface RSVPSubmitPayload {

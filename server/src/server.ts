@@ -9,6 +9,7 @@ import http from 'http';
 import connectDB from './config/database';
 import { errorHandler } from './middlewares/errorHandler';
 import { initWhatsAppClient } from './whatsapp';
+import { initScheduler } from './services/schedulerService';
 import authRoutes from './routes/authRoutes';
 import guestRoutes from './routes/guestRoutes';
 import rsvpRoutes from './routes/rsvpRoutes';
@@ -16,6 +17,7 @@ import statsRoutes from './routes/statsRoutes';
 import whatsappRoutes from './routes/whatsappRoutes';
 import messageRoutes from './routes/messageRoutes';
 import tableRoutes from './routes/tableRoutes';
+import settingsRoutes from './routes/settingsRoutes';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -25,12 +27,11 @@ app.set('trust proxy', 1);
 
 // 1. CORS MUST BE FIRST - Before helmet and rate limiting
 app.use(cors({
-  // origin: 'https://wedding-rsvp-9d1c.onrender.com', // Verified URL
   origin: true,
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'ngrok-skip-browser-warning'] // MUST HAVE THIS
 }));
-
 // 2. Security Headers - Adjusted for cross-origin
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
@@ -68,6 +69,7 @@ app.use('/api/stats', statsRoutes);
 app.use('/api/whatsapp', whatsappRoutes);   // GET /api/whatsapp/status
 app.use('/api/messages', messageRoutes);    // POST /api/messages/send-invitation
 app.use('/api/tables', tableRoutes);        // GET|POST /api/tables  PUT|DELETE /api/tables/:id  POST|DELETE /api/tables/:id/seat/:guestId
+app.use('/api/settings', settingsRoutes);  // GET|PUT /api/settings  POST /api/settings/lock  POST /api/settings/trigger/*
 
 // 7. 404 & Error Handling
 app.use((_req, res) => {
@@ -90,6 +92,9 @@ const start = async () => {
     } else {
       console.log('[WhatsApp] Skipped — set WHATSAPP_ENABLED=true to enable locally.');
     }
+
+    // Start background cron jobs (reminders, auto-lock)
+    initScheduler();
 
     server = app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
