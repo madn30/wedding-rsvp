@@ -12,10 +12,14 @@ interface CanvasProps {
   onSelectTable: (id: string | null) => void;
   /** Called when a table is double-clicked — opens the config modal */
   onDoubleClickTable?: () => void;
+  /** Scale factor for table sizes (1 = reference 600px canvas width) */
+  canvasScale?: number;
+  /** Actual canvas pixel dimensions for live drag clamping */
+  canvasDims?: { w: number; h: number };
 }
 
 const Canvas = forwardRef<HTMLDivElement, CanvasProps>(
-  ({ tables, activeTableId, hoveredTableId, isLoading, onSelectTable, onDoubleClickTable }, ref) => {
+  ({ tables, activeTableId, hoveredTableId, isLoading, onSelectTable, onDoubleClickTable, canvasScale = 1, canvasDims }, ref) => {
     const { setNodeRef: setDropRef } = useDroppable({
       id: 'canvas',
       data: { type: 'canvas' },
@@ -30,7 +34,7 @@ const Canvas = forwardRef<HTMLDivElement, CanvasProps>(
     return (
       <div
         ref={mergedRef}
-        className="relative w-full h-full rounded-2xl shadow-2xl select-none"
+        className="relative w-full flex-1 rounded-2xl shadow-2xl select-none overflow-hidden"
         style={{
           background: 'radial-gradient(ellipse at center, #243b5540 0%, #0d1b2a 100%)',
           backgroundImage: `
@@ -67,6 +71,8 @@ const Canvas = forwardRef<HTMLDivElement, CanvasProps>(
             isGuestHovering={hoveredTableId === table._id}
             onSelect={onSelectTable}
             onDoubleClick={onDoubleClickTable}
+            canvasScale={canvasScale}
+            canvasDims={canvasDims}
           />
         ))}
       </div>

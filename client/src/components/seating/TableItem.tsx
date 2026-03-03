@@ -9,6 +9,10 @@ interface TableItemProps {
   isGuestHovering: boolean;
   onSelect: (id: string) => void;
   onDoubleClick?: () => void;
+  /** Scale factor based on canvas size (1 = reference 600px width) */
+  canvasScale?: number;
+  /** Actual canvas pixel dimensions — used to clamp drag within bounds */
+  canvasDims?: { w: number; h: number };
 }
 
 // ─── Element types (floor decorations, no seating) ───────────────────────────
@@ -35,8 +39,8 @@ function getElementConfig(type: string): ElementConfig {
   }
 }
 
-// ─── Pixel dimensions per type ───────────────────────────────────────────────
-function getTableDims(type: string, size: number): { w: number; h: number } {
+// ─── Pixel dimensions per type (at reference canvas width = 600px) ───────────
+export function getTableDims(type: string, size: number): { w: number; h: number } {
   const s = Math.max(0.5, Math.min(2.5, size ?? 1));
   switch (type) {
     case 'rect':   return { w: Math.round(110 * s), h: Math.round(64 * s) };
@@ -66,7 +70,7 @@ function getBorderRadius(type: string): string {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 const TableItem: React.FC<TableItemProps> = memo(
-  ({ table, isSelected, isGuestHovering, onSelect, onDoubleClick }) => {
+  ({ table, isSelected, isGuestHovering, onSelect, onDoubleClick, canvasScale = 1, canvasDims }) => {
     const isElem = isElementType(table.type);
 
     // Draggable — for repositioning on the canvas
@@ -100,11 +104,25 @@ const TableItem: React.FC<TableItemProps> = memo(
     );
 
     const isFull = !isElem && table.seatedGuests.length >= table.capacity;
-    const dims = getTableDims(table.type, table.size);
+    const baseDims = getTableDims(table.type, table.size);
+    // Scale dimensions proportionally to canvas size
+    const dims = { w: Math.round(baseDims.w * canvasScale), h: Math.round(baseDims.h * canvasScale) };
     const highlighting = !isElem && (isGuestOver || isGuestHovering);
 
-    const translateX = transform?.x ?? 0;
-    const translateY = transform?.y ?? 0;
+    const rawTranslateX = transform?.x ?? 0;
+    const rawTranslateY = transform?.y ?? 0;
+
+    // Clamp drag so the table center never pushes an edge outside the canvas
+    let translateX = rawTranslateX;
+    let translateY = rawTranslateY;
+    if (canvasDims && canvasDims.w > 0 && canvasDims.h > 0) {
+      const halfWpx = dims.w / 2;
+      const halfHpx = dims.h / 2;
+      const centerX = (table.x / 100) * canvasDims.w;
+      const centerY = (table.y / 100) * canvasDims.h;
+      translateX = Math.max(halfWpx - centerX, Math.min(canvasDims.w - halfWpx - centerX, rawTranslateX));
+      translateY = Math.max(halfHpx - centerY, Math.min(canvasDims.h - halfHpx - centerY, rawTranslateY));
+    }
 
     // ── Shared base style ────────────────────────────────────────────────────
     const baseStyle: React.CSSProperties = {

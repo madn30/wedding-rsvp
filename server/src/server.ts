@@ -25,13 +25,10 @@ app.set('trust proxy', 1);
 
 // 1. CORS MUST BE FIRST - Before helmet and rate limiting
 app.use(cors({
-  // origin: 'https://wedding-rsvp-9d1c.onrender.com', // Verified URL
-  origin: 'https://wedding-rsvp-9d1c.onrender.com',
-  credentials: true,
+  origin: ['http://localhost:3001', 'https://your-frontend-on-render.com'], // Add your Render URL here!
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'ngrok-skip-browser-warning'] 
 }));
-
 // 2. Security Headers - Adjusted for cross-origin
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }

@@ -32,6 +32,7 @@ import {
 import toast from 'react-hot-toast';
 
 import Canvas from '../components/seating/Canvas';
+import { getTableDims } from '../components/seating/TableItem';
 import GuestSidebar from '../components/seating/GuestSidebar';
 import { SeatingGuest, SeatingTable, TableType, useSeatingStore } from '../store/seatingStore';
 
@@ -568,6 +569,23 @@ const SeatingEngine: React.FC = () => {
   const canvasRef = useRef<HTMLDivElement>(null);
   const preDragPos = useRef<{ x: number; y: number } | null>(null);
 
+  // ── Canvas dimensions (responsive table sizes + live drag clamping) ────────
+  const REFERENCE_CANVAS_WIDTH = 600;
+  const [canvasScale, setCanvasScale] = useState(1);
+  const [canvasDims, setCanvasDims] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      const { width, height } = entries[0].contentRect;
+      if (width > 0) {
+        setCanvasScale(Math.max(0.45, Math.min(1.4, width / REFERENCE_CANVAS_WIDTH)));
+        setCanvasDims({ w: width, h: height });
+      }
+    });
+    observer.observe(canvasRef.current);
+    return () => observer.disconnect();
+  }, []);
+
   // ── Sensors ───────────────────────────────────────────────────────────────
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
@@ -615,63 +633,100 @@ const SeatingEngine: React.FC = () => {
     }
   }, []);
 
-  const handleDragEnd = useCallback(
-    ({ active, over, delta }: DragEndEvent) => {
-      setActiveDragId(null);
-      setHoveredTableId(null);
+const handleDragEnd = useCallback(
+  ({ active, over, delta }: DragEndEvent) => {
+    setActiveDragId(null);
+    setHoveredTableId(null);
 
-      const activeType = active.data.current?.type;
+    const activeType = active.data.current?.type;
 
-      if (activeType === 'table') {
-        // ── Table repositioning ────────────────────────────────────────────
-        const tableId = active.data.current?.tableId as string;
-        const canvas = canvasRef.current;
-        if (!canvas) return;
+    if (activeType === 'table') {
+      const tableId = active.data.current?.tableId as string;
+      const canvas = canvasRef.current;
+      if (!canvas) return;
 
-        const rect = canvas.getBoundingClientRect();
-        const table = tables.find((t) => t._id === tableId);
-        if (!table) return;
+      const rect = canvas.getBoundingClientRect();
+      const table = tables.find((t) => t._id === tableId);
+      if (!table) return;
 
-        const rawX = table.x + (delta.x / rect.width) * 100;
-        const rawY = table.y + (delta.y / rect.height) * 100;
-        const newX = snap(rawX, 2, 97);
-        const newY = snap(rawY, 2, 97);
+      // 1. חישוב המיקום המבוקש (כולל snap לגריד)
+      const rawX = table.x + (delta.x / rect.width) * 100;
+      const rawY = table.y + (delta.y / rect.height) * 100;
 
-        updateTableLocal(tableId, { x: newX, y: newY });
-        debouncedSavePosition(
-          tableId,
-          newX,
-          newY,
-          preDragPos.current?.x ?? table.x,
-          preDragPos.current?.y ?? table.y
-        );
-        preDragPos.current = null;
+      // 2. חישוב מידות האלמנט הנוכחי באחוזים
+      const dims = getTableDims(table.type, table.size);
+      const halfWpct = ((dims.w * canvasScale) / 2 / rect.width) * 100;
+      const halfHpct = ((dims.h * canvasScale) / 2 / rect.height) * 100;
 
-      } else if (activeType === 'guest') {
-        // ── Guest assignment ───────────────────────────────────────────────
-        const guestId = active.data.current?.guestId as string;
-        let targetTableId: string | null = null;
+      let newX = snap(rawX, halfWpct, 100 - halfWpct);
+      let newY = snap(rawY, halfHpct, 100 - halfHpct);
 
-        const overType = over?.data.current?.type;
+      // 3. בדיקת התנגשויות (Collision Detection)
+      // אנחנו בודקים האם המיקום החדש חופף לאחד השולחנות האחרים
+      const hasCollision = tables.some((other) => {
+        if (other._id === tableId) return false;
 
-        if (overType === 'table') {
-          // Dropped directly on a table element
-          targetTableId = over!.data.current?.tableId as string;
-        } else if (overType === 'table-detail') {
-          // Dropped on the right-side detail panel
-          targetTableId = over!.data.current?.tableId as string;
-        }
-        // No fallback — dropping on empty canvas does nothing
+        const otherDims = getTableDims(other.type, other.size);
+        
+        // המרת מידות השולחן השני לאחוזים
+        const otherHalfWpct = ((otherDims.w * canvasScale) / 2 / rect.width) * 100;
+        const otherHalfHpct = ((otherDims.h * canvasScale) / 2 / rect.height) * 100;
 
-        if (targetTableId) {
-          seatGuest(guestId, targetTableId);
-          setActiveTable(targetTableId);
-        }
+        // בדיקה מתמטית של חפיפת מלבנים (AABB)
+        const isOverlapping = 
+          Math.abs(newX - other.x) < (halfWpct * 2 + otherHalfWpct * 2) / 2 &&
+          Math.abs(newY - other.y) < (halfHpct * 2 + otherHalfHpct * 2) / 2;
+
+        return isOverlapping;
+      });
+
+      // 4. אם יש התנגשות - אל תאפשר את התנועה (השאר במיקום המקורי)
+      if (hasCollision) {
+        newX = preDragPos.current?.x ?? table.x;
+        newY = preDragPos.current?.y ?? table.y;
+        toast.error('לא ניתן להניח אלמנטים אחד על השני', { id: 'collision' });
       }
-    },
-    [tables, updateTableLocal, debouncedSavePosition, seatGuest, setActiveTable]
-  );
 
+      // 5. עדכון ושמירה
+      updateTableLocal(tableId, { x: newX, y: newY });
+      debouncedSavePosition(
+        tableId,
+        newX,
+        newY,
+        preDragPos.current?.x ?? table.x,
+        preDragPos.current?.y ?? table.y
+      );
+      
+      preDragPos.current = null;
+
+    } else if (activeType === 'guest') {
+      // ── לוגיקה קיימת לשיבוץ אורחים ───────────────────────────────────────────────
+      const guestId = active.data.current?.guestId as string;
+      let targetTableId: string | null = null;
+
+      const overType = over?.data.current?.type;
+
+      if (overType === 'table') {
+        targetTableId = over!.data.current?.tableId as string;
+      } else if (overType === 'table-detail') {
+        targetTableId = over!.data.current?.tableId as string;
+      }
+
+      if (targetTableId) {
+        seatGuest(guestId, targetTableId);
+        setActiveTable(targetTableId);
+      }
+    }
+  },
+  [
+    tables, 
+    canvasScale, 
+    updateTableLocal, 
+    debouncedSavePosition, 
+    seatGuest, 
+    setActiveTable
+  ]
+);
   // ── Derived ───────────────────────────────────────────────────────────────
   const activeTable = tables.find((t) => t._id === activeTableId) ?? null;
   const seatedCount = tables.reduce((acc, t) => acc + t.seatedGuests.length, 0);
@@ -795,6 +850,7 @@ const SeatingEngine: React.FC = () => {
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
+        
       >
         <div className="flex-1 flex flex-col lg:grid lg:grid-cols-12 gap-4 min-h-[500px] lg:min-h-[650px]">
           {/* Guest sidebar */}
@@ -811,8 +867,8 @@ const SeatingEngine: React.FC = () => {
             />
           </div>
 
-          {/* Canvas */}
-          <div className="lg:col-span-6 flex-1 lg:h-full order-1 lg:order-2">
+          {/* Canvas — flex flex-col + min-h-0 so flex-1 inside resolves correctly */}
+          <div className="lg:col-span-6 flex-1 lg:h-full order-1 lg:order-2 flex flex-col min-h-0">
             <Canvas
               ref={canvasRef}
               tables={tables}
@@ -821,6 +877,8 @@ const SeatingEngine: React.FC = () => {
               isLoading={isLoadingTables}
               onSelectTable={setActiveTable}
               onDoubleClickTable={handleDoubleClickTable}
+              canvasScale={canvasScale}
+              canvasDims={canvasDims}
             />
           </div>
 
