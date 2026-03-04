@@ -32,6 +32,7 @@ import {
 import toast from 'react-hot-toast';
 
 import Canvas from '../components/seating/Canvas';
+import { getTableDims } from '../components/seating/TableItem';
 import GuestSidebar from '../components/seating/GuestSidebar';
 import { SeatingGuest, SeatingTable, TableType, useSeatingStore } from '../store/seatingStore';
 
@@ -50,6 +51,80 @@ const ELEMENTS: { type: TableType; label: string; emoji: string; defaultName: st
   { type: 'bar',   label: 'בר',             emoji: '🍹', defaultName: 'בר' },
   { type: 'stage', label: 'במה',            emoji: '🎤', defaultName: 'במה' },
 ];
+
+// ─── Overlap detection helpers ────────────────────────────────────────────────
+
+/** Check if two axis-aligned rectangles (given as center + half-extents) overlap */
+function aabbOverlap(
+  ax: number, ay: number, aHW: number, aHH: number,
+  bx: number, by: number, bHW: number, bHH: number,
+  padding = 4 // px gap to keep between items
+): boolean {
+  return (
+    Math.abs(ax - bx) < aHW + bHW + padding &&
+    Math.abs(ay - by) < aHH + bHH + padding
+  );
+}
+
+/**
+ * If (newX, newY) overlaps any other table, find the nearest valid empty position.
+ * All coordinates are percentage-based canvas centers; dimensions use canvasDims + canvasScale.
+ */
+function findValidPosition(
+  tableId: string,
+  newX: number,
+  newY: number,
+  tableType: string,
+  tableSize: number,
+  allTables: SeatingTable[],
+  scale: number,
+  cw: number,
+  ch: number,
+  halfWpct: number,
+  halfHpct: number
+): { x: number; y: number } {
+  if (cw === 0 || ch === 0) return { x: newX, y: newY };
+
+  const dims = getTableDims(tableType, tableSize);
+  const hw = (dims.w * scale) / 2;
+  const hh = (dims.h * scale) / 2;
+
+  const others = allTables.filter((t) => t._id !== tableId);
+
+  const hasOverlap = (cx: number, cy: number): boolean => {
+    const cpx = (cx / 100) * cw;
+    const cpy = (cy / 100) * ch;
+    return others.some((other) => {
+      const od = getTableDims(other.type, other.size);
+      return aabbOverlap(
+        cpx, cpy, hw, hh,
+        (other.x / 100) * cw, (other.y / 100) * ch,
+        (od.w * scale) / 2, (od.h * scale) / 2
+      );
+    });
+  };
+
+  // No overlap at desired position — keep it
+  if (!hasOverlap(newX, newY)) return { x: newX, y: newY };
+
+  // Spiral outward to find nearest valid spot (step ≈ 3% of canvas width)
+  const STEP = 3;
+  const DIRS: [number, number][] = [
+    [1, 0], [-1, 0], [0, 1], [0, -1],
+    [1, 1], [-1, 1], [1, -1], [-1, -1],
+  ];
+
+  for (let dist = STEP; dist <= 40; dist += STEP) {
+    for (const [dx, dy] of DIRS) {
+      const tx = Math.max(halfWpct, Math.min(100 - halfWpct, newX + dx * dist));
+      const ty = Math.max(halfHpct, Math.min(100 - halfHpct, newY + dy * dist));
+      if (!hasOverlap(tx, ty)) return { x: tx, y: ty };
+    }
+  }
+
+  // Give up — return original clamped position
+  return { x: newX, y: newY };
+}
 
 // ─── Table Config Modal ───────────────────────────────────────────────────────
 
@@ -565,8 +640,39 @@ const SeatingEngine: React.FC = () => {
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [hoveredTableId, setHoveredTableId] = useState<string | null>(null);
 
+  /** True while a TABLE (not a guest) is being dragged */
+  const [isDraggingTable, setIsDraggingTable] = useState(false);
+
+  /** ID of the table that just landed — shows gold lock-flash for 700ms */
+  const [justDroppedTableId, setJustDroppedTableId] = useState<string | null>(null);
+  const justDroppedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (justDroppedTimer.current) clearTimeout(justDroppedTimer.current);
+    };
+  }, []);
+
   const canvasRef = useRef<HTMLDivElement>(null);
   const preDragPos = useRef<{ x: number; y: number } | null>(null);
+
+  // ── Canvas dimensions (responsive table sizes + live drag clamping) ────────
+  const REFERENCE_CANVAS_WIDTH = 600;
+  const [canvasScale, setCanvasScale] = useState(1);
+  const [canvasDims, setCanvasDims] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      const { width, height } = entries[0].contentRect;
+      if (width > 0) {
+        setCanvasScale(Math.max(0.45, Math.min(1.4, width / REFERENCE_CANVAS_WIDTH)));
+        setCanvasDims({ w: width, h: height });
+      }
+    });
+    observer.observe(canvasRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   // ── Sensors ───────────────────────────────────────────────────────────────
   const sensors = useSensors(
@@ -574,22 +680,44 @@ const SeatingEngine: React.FC = () => {
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } })
   );
 
-  // ── Custom collision detection ────────────────────────────────────────────
-  // Guests: closestCenter among ONLY table/table-detail droppables (canvas excluded)
-  //   → prevents the huge canvas droppable from winning and causing wrong-table drops
-  // Tables: pointerWithin (only trigger when pointer is inside the droppable)
+  // ── Custom collision detection ─────────────────────────────────────────────
+  // Guests:
+  //   1. pointerWithin among tables + table-detail (strict: pointer must be inside)
+  //   2. Fallback: closestCenter within 60px tolerance (helps with small tables / edge hits)
+  //   → Dropping on empty canvas still returns [] (no accidental seat)
+  // Tables: default pointerWithin
   const collisionDetection: CollisionDetection = useCallback((args) => {
     const activeType = (args.active as any)?.data?.current?.type;
+
     if (activeType === 'guest') {
-      // Only register a hit when the pointer is actually inside a table element.
-      // pointerWithin returns [] when hovering empty canvas space → no accidental seats.
       const eligible = args.droppableContainers.filter((c) => {
         const t = c.data?.current?.type;
         return t === 'table' || t === 'table-detail';
       });
       if (eligible.length === 0) return [];
-      return pointerWithin({ ...args, droppableContainers: eligible });
+
+      // Try strict pointer-within first (pointer fully inside the droppable)
+      const strict = pointerWithin({ ...args, droppableContainers: eligible });
+      if (strict.length > 0) return strict;
+
+      // Fallback: closest center — but only if pointer is within 60px of the table center
+      const nearest = closestCenter({ ...args, droppableContainers: eligible });
+      if (nearest.length > 0 && args.pointerCoordinates) {
+        const container = eligible.find((c) => c.id === nearest[0].id);
+        const rect = container?.rect?.current;
+        if (rect) {
+          const cx = rect.left + rect.width / 2;
+          const cy = rect.top + rect.height / 2;
+          const dist = Math.hypot(
+            args.pointerCoordinates.x - cx,
+            args.pointerCoordinates.y - cy
+          );
+          if (dist < 60) return nearest;
+        }
+      }
+      return [];
     }
+
     return pointerWithin(args);
   }, []);
 
@@ -602,12 +730,21 @@ const SeatingEngine: React.FC = () => {
         const table = tables.find((t) => t._id === active.data.current?.tableId);
         if (table) preDragPos.current = { x: table.x, y: table.y };
         setActiveTable(active.data.current?.tableId ?? null);
+        setIsDraggingTable(true);
+      } else {
+        setIsDraggingTable(false);
       }
     },
     [tables, setActiveTable]
   );
 
-  const handleDragOver = useCallback(({ over }: DragOverEvent) => {
+  // Only set hoveredTableId when a GUEST is being dragged (not a table)
+  const handleDragOver = useCallback(({ active, over }: DragOverEvent) => {
+    const activeType = (active as any)?.data?.current?.type;
+    if (activeType !== 'guest') {
+      setHoveredTableId(null);
+      return;
+    }
     if (over?.data.current?.type === 'table') {
       setHoveredTableId(over.data.current.tableId);
     } else {
@@ -619,6 +756,7 @@ const SeatingEngine: React.FC = () => {
     ({ active, over, delta }: DragEndEvent) => {
       setActiveDragId(null);
       setHoveredTableId(null);
+      setIsDraggingTable(false);
 
       const activeType = active.data.current?.type;
 
@@ -634,8 +772,28 @@ const SeatingEngine: React.FC = () => {
 
         const rawX = table.x + (delta.x / rect.width) * 100;
         const rawY = table.y + (delta.y / rect.height) * 100;
-        const newX = snap(rawX, 2, 97);
-        const newY = snap(rawY, 2, 97);
+
+        // Clamp based on actual scaled table size so edges stay within canvas
+        const dims = getTableDims(table.type, table.size);
+        const halfWpct = ((dims.w * canvasScale) / 2 / rect.width) * 100;
+        const halfHpct = ((dims.h * canvasScale) / 2 / rect.height) * 100;
+        const clampedX = snap(rawX, halfWpct, 100 - halfWpct);
+        const clampedY = snap(rawY, halfHpct, 100 - halfHpct);
+
+        // ── Solid wall: bump to nearest non-overlapping position ───────────
+        const { x: newX, y: newY } = findValidPosition(
+          tableId,
+          clampedX,
+          clampedY,
+          table.type,
+          table.size,
+          tables,
+          canvasScale,
+          canvasDims.w,
+          canvasDims.h,
+          halfWpct,
+          halfHpct
+        );
 
         updateTableLocal(tableId, { x: newX, y: newY });
         debouncedSavePosition(
@@ -647,6 +805,11 @@ const SeatingEngine: React.FC = () => {
         );
         preDragPos.current = null;
 
+        // ── Lock flash: briefly highlight the placed table ─────────────────
+        if (justDroppedTimer.current) clearTimeout(justDroppedTimer.current);
+        setJustDroppedTableId(tableId);
+        justDroppedTimer.current = setTimeout(() => setJustDroppedTableId(null), 700);
+
       } else if (activeType === 'guest') {
         // ── Guest assignment ───────────────────────────────────────────────
         const guestId = active.data.current?.guestId as string;
@@ -655,13 +818,13 @@ const SeatingEngine: React.FC = () => {
         const overType = over?.data.current?.type;
 
         if (overType === 'table') {
-          // Dropped directly on a table element
+          // Dropped directly on a table element on the canvas
           targetTableId = over!.data.current?.tableId as string;
         } else if (overType === 'table-detail') {
           // Dropped on the right-side detail panel
           targetTableId = over!.data.current?.tableId as string;
         }
-        // No fallback — dropping on empty canvas does nothing
+        // Dropping on empty canvas / floor element → nothing happens
 
         if (targetTableId) {
           seatGuest(guestId, targetTableId);
@@ -669,7 +832,7 @@ const SeatingEngine: React.FC = () => {
         }
       }
     },
-    [tables, updateTableLocal, debouncedSavePosition, seatGuest, setActiveTable]
+    [tables, canvasScale, canvasDims, updateTableLocal, debouncedSavePosition, seatGuest, setActiveTable]
   );
 
   // ── Derived ───────────────────────────────────────────────────────────────
@@ -679,6 +842,8 @@ const SeatingEngine: React.FC = () => {
   const activeDragGuest = activeDragId?.startsWith('guest-')
     ? guests.find((g) => g._id === activeDragId.replace('guest-', ''))
     : null;
+
+  const isAnyDragging = !!activeDragId;
 
   // ── Add table / element ──────────────────────────────────────────────────
   const handleAddTable = useCallback(async (name: string, type: TableType) => {
@@ -720,131 +885,156 @@ const SeatingEngine: React.FC = () => {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div
-      dir="rtl"
-      className="p-4 md:p-6 w-full max-w-[1600px] mx-auto bg-[#111827] min-h-screen text-white font-sans flex flex-col"
-    >
-      {/* ── Modals ──────────────────────────────────────────────────────────── */}
-      {showAddPrompt && (
-        <AddTablePrompt onConfirm={handleAddTable} onCancel={() => setShowAddPrompt(false)} />
-      )}
-      {showAddElementPrompt && (
-        <AddElementPrompt onConfirm={handleAddElement} onCancel={() => setShowAddElementPrompt(false)} />
-      )}
-      {showConfigModal && activeTable && (
-        <TableConfigModal
-          table={activeTable}
-          onClose={() => setShowConfigModal(false)}
-          onUpdate={handleConfigUpdate}
-          onUpdateLocal={handleConfigUpdateLocal}
-          onDelete={handleConfigDelete}
-        />
-      )}
+    <>
+      {/* ── Global keyframes for the table lock-flash animation ───────────── */}
+      <style>{`
+        @keyframes table-lock-flash {
+          0%   {
+            box-shadow: 0 0 0 3px #c9a84c, 0 0 40px rgba(201,168,76,0.85), 0 0 70px rgba(201,168,76,0.4);
+            border-color: #c9a84c;
+          }
+          60%  {
+            box-shadow: 0 0 0 2px #c9a84c, 0 0 20px rgba(201,168,76,0.35);
+            border-color: #c9a84c;
+          }
+          100% {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.45);
+            border-color: rgba(255,255,255,0.12);
+          }
+        }
+      `}</style>
 
-      {/* ── Header ──────────────────────────────────────────────────────────── */}
-      <header className="hidden md:block text-center mb-5">
-        <h1 className="text-3xl font-serif text-[#faf6ef]">
-          עיצוב אולם{' '}
-          <em className="text-[#c9a84c] font-serif italic">ותכנון מקומות</em>
-        </h1>
-      </header>
-
-      {/* ── Toolbar ─────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row flex-wrap items-center justify-between gap-3 bg-[#0d1b2a]/90 border border-[#c9a84c]/15 rounded-2xl px-4 py-3 mb-5 backdrop-blur-md shrink-0">
-        {/* Stats */}
-        <div className="flex items-center gap-3 text-xs text-white/40">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#c9a84c]/10 border border-[#c9a84c]/25 rounded-full text-[#e8c97e] font-semibold">
-            <Users size={13} />
-            {seatedCount} / {guests.length} אורחים שובצו
-          </div>
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full">
-            <LayoutGrid size={12} />
-            {tables.length} פריטים
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex flex-wrap gap-2 justify-end">
-          {activeTableId && (
-            <button
-              onClick={() => setShowConfigModal(true)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-[#c9a84c]/15 border border-[#c9a84c]/40 rounded-lg text-xs font-semibold text-[#e8c97e] hover:bg-[#c9a84c]/25 transition shadow-[0_0_10px_rgba(201,168,76,0.15)]"
-            >
-              <Settings size={13} /> הגדרות
-            </button>
-          )}
-          <button
-            onClick={() => setShowAddElementPrompt(true)}
-            className="flex items-center gap-1.5 px-3 py-2 bg-purple-900/30 border border-purple-500/30 rounded-lg text-xs font-semibold text-purple-300 hover:bg-purple-900/50 transition"
-          >
-            <Layers size={13} /> הוסף אלמנט
-          </button>
-          <button
-            onClick={() => setShowAddPrompt(true)}
-            className="flex items-center gap-1.5 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-xs font-semibold hover:bg-white/10 transition"
-          >
-            <Plus size={13} /> הוסף שולחן
-          </button>
-        </div>
-      </div>
-
-      {/* ── DnD Context ─────────────────────────────────────────────────────── */}
-      <DndContext
-        sensors={sensors}
-        collisionDetection={collisionDetection}
-        onDragStart={handleDragStart}
-        onDragOver={handleDragOver}
-        onDragEnd={handleDragEnd}
+      <div
+        dir="rtl"
+        className="p-4 md:p-6 w-full max-w-[1600px] mx-auto bg-[#111827] min-h-screen text-white font-sans flex flex-col"
       >
-        <div className="flex-1 flex flex-col lg:grid lg:grid-cols-12 gap-4 min-h-[500px] lg:min-h-[650px]">
-          {/* Guest sidebar */}
-          <div className="lg:col-span-3 h-[230px] lg:h-full order-2 lg:order-1">
-            <GuestSidebar
-              guests={guests}
-              tables={tables}
-              isLoading={isLoadingGuests}
-              activeDragGuestId={
-                activeDragId?.startsWith('guest-')
-                  ? activeDragId.replace('guest-', '')
-                  : null
-              }
-            />
+        {/* ── Modals ──────────────────────────────────────────────────────────── */}
+        {showAddPrompt && (
+          <AddTablePrompt onConfirm={handleAddTable} onCancel={() => setShowAddPrompt(false)} />
+        )}
+        {showAddElementPrompt && (
+          <AddElementPrompt onConfirm={handleAddElement} onCancel={() => setShowAddElementPrompt(false)} />
+        )}
+        {showConfigModal && activeTable && (
+          <TableConfigModal
+            table={activeTable}
+            onClose={() => setShowConfigModal(false)}
+            onUpdate={handleConfigUpdate}
+            onUpdateLocal={handleConfigUpdateLocal}
+            onDelete={handleConfigDelete}
+          />
+        )}
+
+        {/* ── Header ──────────────────────────────────────────────────────────── */}
+        <header className="hidden md:block text-center mb-5">
+          <h1 className="text-3xl font-serif text-[#faf6ef]">
+            עיצוב אולם{' '}
+            <em className="text-[#c9a84c] font-serif italic">ותכנון מקומות</em>
+          </h1>
+        </header>
+
+        {/* ── Toolbar ─────────────────────────────────────────────────────────── */}
+        <div className="flex flex-col sm:flex-row flex-wrap items-center justify-between gap-3 bg-[#0d1b2a]/90 border border-[#c9a84c]/15 rounded-2xl px-4 py-3 mb-5 backdrop-blur-md shrink-0">
+          {/* Stats */}
+          <div className="flex items-center gap-3 text-xs text-white/40">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#c9a84c]/10 border border-[#c9a84c]/25 rounded-full text-[#e8c97e] font-semibold">
+              <Users size={13} />
+              {seatedCount} / {guests.length} אורחים שובצו
+            </div>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full">
+              <LayoutGrid size={12} />
+              {tables.length} פריטים
+            </div>
           </div>
 
-          {/* Canvas */}
-          <div className="lg:col-span-6 flex-1 lg:h-full order-1 lg:order-2">
-            <Canvas
-              ref={canvasRef}
-              tables={tables}
-              activeTableId={activeTableId}
-              hoveredTableId={hoveredTableId}
-              isLoading={isLoadingTables}
-              onSelectTable={setActiveTable}
-              onDoubleClickTable={handleDoubleClickTable}
-            />
-          </div>
-
-          {/* Table detail / placeholder */}
-          <div className="lg:col-span-3 h-[230px] lg:h-full order-3">
-            {activeTable ? (
-              <TableDetail
-                table={activeTable}
-                onUnseat={(guestId) => unseatGuest(guestId, activeTable._id)}
-              />
-            ) : (
-              <div className="bg-[#0d1b2a]/90 border border-white/5 rounded-2xl h-full flex items-center justify-center">
-                <p className="text-white/20 text-sm font-serif">בחר שולחן לפרטים</p>
-              </div>
+          {/* Actions */}
+          <div className="flex flex-wrap gap-2 justify-end">
+            {activeTableId && (
+              <button
+                onClick={() => setShowConfigModal(true)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-[#c9a84c]/15 border border-[#c9a84c]/40 rounded-lg text-xs font-semibold text-[#e8c97e] hover:bg-[#c9a84c]/25 transition shadow-[0_0_10px_rgba(201,168,76,0.15)]"
+              >
+                <Settings size={13} /> הגדרות
+              </button>
             )}
+            <button
+              onClick={() => setShowAddElementPrompt(true)}
+              className="flex items-center gap-1.5 px-3 py-2 bg-purple-900/30 border border-purple-500/30 rounded-lg text-xs font-semibold text-purple-300 hover:bg-purple-900/50 transition"
+            >
+              <Layers size={13} /> הוסף אלמנט
+            </button>
+            <button
+              onClick={() => setShowAddPrompt(true)}
+              className="flex items-center gap-1.5 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-xs font-semibold hover:bg-white/10 transition"
+            >
+              <Plus size={13} /> הוסף שולחן
+            </button>
           </div>
         </div>
 
-        {/* Drag overlay — only for guests (tables move via their own CSS transform) */}
-        <DragOverlay dropAnimation={null}>
-          {activeDragGuest && <GuestDragGhost guest={activeDragGuest} />}
-        </DragOverlay>
-      </DndContext>
-    </div>
+        {/* ── DnD Context ─────────────────────────────────────────────────────── */}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={collisionDetection}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="flex-1 flex flex-col lg:grid lg:grid-cols-12 gap-4 min-h-[500px] lg:min-h-[650px]">
+            {/* Guest sidebar */}
+            <div className="lg:col-span-3 h-[230px] lg:h-full order-2 lg:order-1">
+              <GuestSidebar
+                guests={guests}
+                tables={tables}
+                isLoading={isLoadingGuests}
+                activeDragGuestId={
+                  activeDragId?.startsWith('guest-')
+                    ? activeDragId.replace('guest-', '')
+                    : null
+                }
+              />
+            </div>
+
+            {/* Canvas — flex flex-col + min-h-0 so flex-1 inside resolves correctly */}
+            <div className="lg:col-span-6 flex-1 lg:h-full order-1 lg:order-2 flex flex-col min-h-0">
+              <Canvas
+                ref={canvasRef}
+                tables={tables}
+                activeTableId={activeTableId}
+                hoveredTableId={hoveredTableId}
+                isLoading={isLoadingTables}
+                onSelectTable={setActiveTable}
+                onDoubleClickTable={handleDoubleClickTable}
+                canvasScale={canvasScale}
+                canvasDims={canvasDims}
+                isDragging={isAnyDragging}
+                isDraggingTable={isDraggingTable}
+                justDroppedTableId={justDroppedTableId}
+              />
+            </div>
+
+            {/* Table detail / placeholder */}
+            <div className="lg:col-span-3 h-[230px] lg:h-full order-3">
+              {activeTable ? (
+                <TableDetail
+                  table={activeTable}
+                  onUnseat={(guestId) => unseatGuest(guestId, activeTable._id)}
+                />
+              ) : (
+                <div className="bg-[#0d1b2a]/90 border border-white/5 rounded-2xl h-full flex items-center justify-center">
+                  <p className="text-white/20 text-sm font-serif">בחר שולחן לפרטים</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Drag overlay — only for guests (tables move via their own CSS transform) */}
+          <DragOverlay dropAnimation={null}>
+            {activeDragGuest && <GuestDragGhost guest={activeDragGuest} />}
+          </DragOverlay>
+        </DndContext>
+      </div>
+    </>
   );
 };
 
