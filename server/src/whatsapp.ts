@@ -61,6 +61,7 @@ export const initWhatsAppClient = (): void => {
   client = new Client({
     authStrategy: new LocalAuth({ dataPath: '.wwebjs_auth' }),
     puppeteer: {
+      executablePath: process.env.CHROME_PATH || undefined,
       headless: true,
       args: [
         '--no-sandbox',
