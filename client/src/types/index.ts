@@ -1,7 +1,12 @@
-export type RSVPResponse = 'yes' | 'no' | 'maybe' | null;
-/** SMS via Twilio has been removed — only WhatsApp is supported. */
-export type MessageChannel = 'whatsapp';
-export type FoodPreference = 'regular' | 'vegetarian' | 'vegan' | 'gluten-free' | null;
+export type RSVPResponse = "yes" | "no" | "maybe" | null;
+
+export type MessageChannel = "whatsapp";
+export type FoodPreference =
+  | "regular"
+  | "vegetarian"
+  | "vegan"
+  | "gluten-free"
+  | null;
 
 export interface Guest {
   _id: string;
@@ -68,7 +73,7 @@ export interface RSVPData {
   coupleNames: string;
   weddingDate: string;
   venue: string;
-  /** True when the wedding date has passed or admin has manually locked forms */
+
   isExpired?: boolean;
 }
 
@@ -80,8 +85,7 @@ export interface RSVPSubmitPayload {
   specialRequests?: string;
 }
 
-
-export type TableShape = 'round' | 'rect' | 'square' | 'oval';
+export type TableShape = "round" | "rect" | "square" | "oval";
 
 export interface Table {
   id: number;

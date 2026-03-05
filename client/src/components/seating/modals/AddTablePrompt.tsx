@@ -1,21 +1,27 @@
-import React, { useState } from 'react';
-import toast from 'react-hot-toast';
-import { TableType } from '../../../store/seatingStore';
-import { TABLE_SHAPES } from '../constants';
+import React, { useState } from "react";
+import toast from "react-hot-toast";
+import { TableType } from "../../../store/seatingStore";
+import { TABLE_SHAPES } from "../constants";
 
 interface AddTablePromptProps {
   onConfirm: (name: string, type: TableType) => void;
   onCancel: () => void;
 }
 
-const AddTablePrompt: React.FC<AddTablePromptProps> = ({ onConfirm, onCancel }) => {
-  const [name, setName] = useState('');
-  const [type, setType] = useState<TableType>('round');
+const AddTablePrompt: React.FC<AddTablePromptProps> = ({
+  onConfirm,
+  onCancel,
+}) => {
+  const [name, setName] = useState("");
+  const [type, setType] = useState<TableType>("round");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = name.trim();
-    if (!trimmed) { toast.error('הכנס שם לשולחן'); return; }
+    if (!trimmed) {
+      toast.error("הכנס שם לשולחן");
+      return;
+    }
     onConfirm(trimmed, type);
   };
 
@@ -40,7 +46,9 @@ const AddTablePrompt: React.FC<AddTablePromptProps> = ({ onConfirm, onCancel }) 
           />
         </div>
         <div>
-          <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-2">צורה</label>
+          <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-2">
+            צורה
+          </label>
           <div className="grid grid-cols-4 gap-2">
             {TABLE_SHAPES.map((s) => (
               <button
@@ -49,8 +57,8 @@ const AddTablePrompt: React.FC<AddTablePromptProps> = ({ onConfirm, onCancel }) 
                 onClick={() => setType(s.id)}
                 className={`flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${
                   type === s.id
-                    ? 'bg-[#c9a84c]/20 border-[#c9a84c] text-[#e8c97e]'
-                    : 'bg-white/5 border-white/10 text-white/35'
+                    ? "bg-[#c9a84c]/20 border-[#c9a84c] text-[#e8c97e]"
+                    : "bg-white/5 border-white/10 text-white/35"
                 }`}
               >
                 {s.preview}
@@ -60,10 +68,17 @@ const AddTablePrompt: React.FC<AddTablePromptProps> = ({ onConfirm, onCancel }) 
           </div>
         </div>
         <div className="flex justify-end gap-2 pt-1">
-          <button type="button" onClick={onCancel} className="px-4 py-2 text-sm text-white/50 hover:text-white transition">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-4 py-2 text-sm text-white/50 hover:text-white transition"
+          >
             ביטול
           </button>
-          <button type="submit" className="px-5 py-2 bg-[#c9a84c] text-[#0d1b2a] rounded-lg text-sm font-bold hover:scale-105 transition">
+          <button
+            type="submit"
+            className="px-5 py-2 bg-[#c9a84c] text-[#0d1b2a] rounded-lg text-sm font-bold hover:scale-105 transition"
+          >
             הוסף
           </button>
         </div>

@@ -1,8 +1,8 @@
-import React from 'react';
-import { useDroppable } from '@dnd-kit/core';
-import { Trash2 } from 'lucide-react';
-import { SeatingTable } from '../../../store/seatingStore';
-import { ELEMENT_TYPES_SET } from '../constants';
+import React from "react";
+import { useDroppable } from "@dnd-kit/core";
+import { Trash2 } from "lucide-react";
+import { SeatingTable } from "../../../store/seatingStore";
+import { ELEMENT_TYPES_SET } from "../constants";
 
 interface TableDetailProps {
   table: SeatingTable;
@@ -11,8 +11,8 @@ interface TableDetailProps {
 
 const TableDetail: React.FC<TableDetailProps> = ({ table, onUnseat }) => {
   const { setNodeRef, isOver } = useDroppable({
-    id: 'table-detail-drop',
-    data: { type: 'table-detail', tableId: table._id },
+    id: "table-detail-drop",
+    data: { type: "table-detail", tableId: table._id },
   });
 
   const emptySeats = Math.max(0, table.capacity - table.seatedGuests.length);
@@ -24,9 +24,9 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, onUnseat }) => {
       className="bg-[#0d1b2a]/90 border border-[#c9a84c]/15 rounded-2xl h-full flex flex-col overflow-hidden backdrop-blur-md transition-all duration-150"
       style={{
         boxShadow: isOver
-          ? '0 0 0 2px #60a5fa, 0 0 30px rgba(96,165,250,0.25)'
+          ? "0 0 0 2px #60a5fa, 0 0 30px rgba(96,165,250,0.25)"
           : undefined,
-        borderColor: isOver ? '#60a5fa' : undefined,
+        borderColor: isOver ? "#60a5fa" : undefined,
       }}
     >
       <div className="p-3 border-b border-white/5 shrink-0">
@@ -65,16 +65,23 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, onUnseat }) => {
                 {i + 1}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-[#faf6ef] truncate">{guest.name}</p>
+                <p className="text-xs font-semibold text-[#faf6ef] truncate">
+                  {guest.name}
+                </p>
                 {guest.foodPreference && (
-                  <p className="text-[9px] text-white/30 truncate">{guest.foodPreference}</p>
+                  <p className="text-[9px] text-white/30 truncate">
+                    {guest.foodPreference}
+                  </p>
                 )}
               </div>
               <button
                 className="p-1 rounded-md hover:bg-white/5 transition"
                 onClick={() => onUnseat(guest._id)}
               >
-                <Trash2 size={13} className="text-white/25 hover:text-red-400 transition" />
+                <Trash2
+                  size={13}
+                  className="text-white/25 hover:text-red-400 transition"
+                />
               </button>
             </div>
           ))}
@@ -87,7 +94,9 @@ const TableDetail: React.FC<TableDetailProps> = ({ table, onUnseat }) => {
               <div className="w-6 h-6 shrink-0 rounded-md bg-white/10 flex items-center justify-center text-[10px] text-white">
                 {table.seatedGuests.length + i + 1}
               </div>
-              <span className="text-[10px] text-white/40 italic">מקום פנוי</span>
+              <span className="text-[10px] text-white/40 italic">
+                מקום פנוי
+              </span>
             </div>
           ))}
         </div>

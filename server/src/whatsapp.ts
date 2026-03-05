@@ -6,31 +6,31 @@ interface CalendarEvent {
   date?: string;
   startTime?: string;
 }
-import { Client, LocalAuth } from 'whatsapp-web.js';
+import { Client, LocalAuth } from "whatsapp-web.js";
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const qrcode = require('qrcode-terminal') as {
+const qrcode = require("qrcode-terminal") as {
   generate: (text: string, opts?: { small?: boolean }) => void;
 };
 
 export const buildCalendarLink = (event: CalendarEvent | null): string => {
-  const coupleNames = event?.groomName && event?.brideName
-    ? `${event.brideName} ו${event.groomName}`
-    : event?.name || 'החתן והכלה';
+  const coupleNames =
+    event?.groomName && event?.brideName
+      ? `${event.brideName} ו${event.groomName}`
+      : event?.name || "החתן והכלה";
 
   const title = encodeURIComponent(`חתונת ${coupleNames}`);
-  const venue = encodeURIComponent(event?.location || 'טרם נקבע מיקום');
+  const venue = encodeURIComponent(event?.location || "טרם נקבע מיקום");
 
-  let datesParam = '20260210/20260211'; 
+  let datesParam = "20260210/20260211";
 
   if (event?.date && event?.startTime) {
     try {
       let isoDate = event.date;
-      if (isoDate.includes('.')) {
-        const [d, m, y] = isoDate.split('.');
+      if (isoDate.includes(".")) {
+        const [d, m, y] = isoDate.split(".");
         isoDate = `${y}-${m}-${d}`;
-      } else if (isoDate.includes('/')) {
-        const [d, m, y] = isoDate.split('/');
+      } else if (isoDate.includes("/")) {
+        const [d, m, y] = isoDate.split("/");
         isoDate = `${y}-${m}-${d}`;
       }
 
@@ -38,21 +38,21 @@ export const buildCalendarLink = (event: CalendarEvent | null): string => {
       const endDate = new Date(startDate.getTime() + 6 * 60 * 60 * 1000);
 
       const formatToGoogleCal = (d: Date) => {
-        return d.getFullYear().toString() +
-          (d.getMonth() + 1).toString().padStart(2, '0') +
-          d.getDate().toString().padStart(2, '0') +
-          'T' +
-          d.getHours().toString().padStart(2, '0') +
-          d.getMinutes().toString().padStart(2, '0') +
-          '00';
+        return (
+          d.getFullYear().toString() +
+          (d.getMonth() + 1).toString().padStart(2, "0") +
+          d.getDate().toString().padStart(2, "0") +
+          "T" +
+          d.getHours().toString().padStart(2, "0") +
+          d.getMinutes().toString().padStart(2, "0") +
+          "00"
+        );
       };
 
       if (!isNaN(startDate.getTime())) {
         datesParam = `${formatToGoogleCal(startDate)}/${formatToGoogleCal(endDate)}`;
       }
-    } catch (e) {
-      console.warn('Could not parse event date for calendar link, using fallback.');
-    }
+    } catch (e) {}
   }
 
   return (
@@ -62,7 +62,7 @@ export const buildCalendarLink = (event: CalendarEvent | null): string => {
 };
 
 export const buildWazeLink = (): string => {
-  const venue = encodeURIComponent(process.env.WEDDING_VENUE || 'כתובת האירוע');
+  const venue = encodeURIComponent(process.env.WEDDING_VENUE || "כתובת האירוע");
   return `https://www.waze.com/ul?q=${venue}`;
 };
 
@@ -73,56 +73,52 @@ export const initWhatsAppClient = (): void => {
   if (client) return;
 
   client = new Client({
-    authStrategy: new LocalAuth({ dataPath: '.wwebjs_auth' }),
+    authStrategy: new LocalAuth({ dataPath: ".wwebjs_auth" }),
     puppeteer: {
       executablePath: process.env.CHROME_PATH || undefined,
       headless: true,
       args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--single-process',
-        '--no-zygote',
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+        "--single-process",
+        "--no-zygote",
       ],
     },
   });
 
-  client.on('qr', (qr: string) => {
+  client.on("qr", (qr: string) => {
     qrcode.generate(qr, { small: true });
   });
 
-  client.on('authenticated', () => {
-    // Session authenticated
-  });
+  client.on("authenticated", () => {});
 
-  client.on('auth_failure', () => {
+  client.on("auth_failure", () => {
     ready = false;
   });
 
-  client.on('ready', () => {
+  client.on("ready", () => {
     ready = true;
   });
 
-  client.on('disconnected', () => {
+  client.on("disconnected", () => {
     ready = false;
     client = null;
   });
 
-  client.on('message', async (msg: { from: string; body: string }) => {
+  client.on("message", async (msg: { from: string; body: string }) => {
     try {
       const from: string = msg.from;
-      if (!from.endsWith('@c.us')) return;
+      if (!from.endsWith("@c.us")) return;
 
-      const normalized = `+${from.replace('@c.us', '')}`;
-      const { Guest } = await import('./models/Guest');
+      const normalized = `+${from.replace("@c.us", "")}`;
+      const { Guest } = await import("./models/Guest");
       await Guest.findOneAndUpdate(
         { phone: normalized },
-        { $set: { whatsappReplied: true } }
+        { $set: { whatsappReplied: true } },
       );
-    } catch (err) {
-      // Error handling without logs
-    }
+    } catch (err) {}
   });
 
   client.initialize().catch(() => {
@@ -134,14 +130,14 @@ export const initWhatsAppClient = (): void => {
 export const isWhatsAppReady = (): boolean => ready;
 
 export const formatToWhatsAppId = (phone: string): string => {
-  const digits = phone.replace(/\D/g, '');
+  const digits = phone.replace(/\D/g, "");
 
   let national: string;
-  if (digits.startsWith('972') && digits.length === 12) {
+  if (digits.startsWith("972") && digits.length === 12) {
     national = digits;
-  } else if (digits.startsWith('05') && digits.length === 10) {
+  } else if (digits.startsWith("05") && digits.length === 10) {
     national = `972${digits.slice(1)}`;
-  } else if (digits.startsWith('5') && digits.length === 9) {
+  } else if (digits.startsWith("5") && digits.length === 9) {
     national = `972${digits}`;
   } else {
     throw new Error(`Invalid Israeli phone number: "${phone}".`);
@@ -156,10 +152,10 @@ export const randomDelay = (): Promise<void> => {
 
 export const sendWhatsAppMessage = async (
   phone: string,
-  message: string
+  message: string,
 ): Promise<void> => {
   if (!client || !ready) {
-    throw new Error('WhatsApp client is not ready.');
+    throw new Error("WhatsApp client is not ready.");
   }
 
   const chatId = formatToWhatsAppId(phone);
@@ -175,11 +171,11 @@ export const sendWhatsAppMessage = async (
 export const sendDeclinedReply = async (
   phone: string,
   guestName: string,
-  template?: string
+  template?: string,
 ): Promise<void> => {
   const message = (
     template ||
-    'חבל שלא תוכלו להגיע, {{guest_name}} 💛\nתודה שעדכנתם אותנו — נתגעגע אליכם!'
+    "חבל שלא תוכלו להגיע, {{guest_name}} 💛\nתודה שעדכנתם אותנו — נתגעגע אליכם!"
   ).replace(/\{\{guest_name\}\}/g, guestName);
 
   await randomDelay();

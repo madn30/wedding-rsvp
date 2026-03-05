@@ -1,5 +1,5 @@
-import React from 'react';
-import { SeatingGuest } from '../../../store/seatingStore';
+import React from "react";
+import { SeatingGuest } from "../../../store/seatingStore";
 
 interface GuestDragGhostProps {
   guest: SeatingGuest;
@@ -10,7 +10,9 @@ export const GuestDragGhost: React.FC<GuestDragGhostProps> = ({ guest }) => (
     <div className="w-7 h-7 shrink-0 rounded-full bg-gradient-to-br from-[#c9a84c] to-[#f5e6c0] text-[#0d1b2a] flex items-center justify-center font-bold text-[10px]">
       {guest.name[0]}
     </div>
-    <span className="text-xs text-[#faf6ef] font-semibold truncate">{guest.name}</span>
+    <span className="text-xs text-[#faf6ef] font-semibold truncate">
+      {guest.name}
+    </span>
   </div>
 );
 

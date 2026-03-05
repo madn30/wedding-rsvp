@@ -1,13 +1,11 @@
-import { Navigate, Outlet } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { useEventContext } from '../../context/EventContext';
+import { Navigate, Outlet } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import { useEventContext } from "../../context/EventContext";
 
 export const ProtectedRoute = () => {
   const { isLoading: authLoading } = useAuth();
   const { events, isLoading: eventsLoading } = useEventContext();
 
-  // Show spinner while auth token is being verified OR events are loading.
-  // Redirecting during auth init causes a false "no events" state.
   if (authLoading || eventsLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">

@@ -4,8 +4,8 @@ export default defineConfig({
   gateway: {
     channels: {
       web: {
-        transport: "ws"
-      }
-    }
-  }
+        transport: "ws",
+      },
+    },
+  },
 });

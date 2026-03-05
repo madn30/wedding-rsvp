@@ -41,6 +41,7 @@ wedding-rsvp/
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Node.js 18+
 - MongoDB Atlas account
 - Twilio account (with SMS + WhatsApp sandbox)
@@ -56,6 +57,7 @@ npm run dev
 ```
 
 **Seed admin user:**
+
 ```bash
 npx ts-node src/utils/seed.ts
 ```
@@ -73,22 +75,23 @@ Visit: http://localhost:5173
 
 ## 🔐 API Endpoints
 
-| Method | Route | Auth | Description |
-|--------|-------|------|-------------|
-| POST | `/api/admin/login` | ❌ | Admin login |
-| GET | `/api/admin/me` | ✅ | Get current admin |
-| GET | `/api/guests` | ✅ | List guests (paginated, filtered) |
-| POST | `/api/guests` | ✅ | Add new guest |
-| DELETE | `/api/guests/:id` | ✅ | Delete guest |
-| POST | `/api/guests/:id/send` | ✅ | Send SMS/WhatsApp |
-| GET | `/api/guests/export` | ✅ | Export CSV |
-| GET | `/api/rsvp/:token` | ❌ | Get RSVP data |
-| POST | `/api/rsvp/:token` | ❌ | Submit RSVP |
-| GET | `/api/stats` | ✅ | Dashboard stats |
+| Method | Route                  | Auth | Description                       |
+| ------ | ---------------------- | ---- | --------------------------------- |
+| POST   | `/api/admin/login`     | ❌   | Admin login                       |
+| GET    | `/api/admin/me`        | ✅   | Get current admin                 |
+| GET    | `/api/guests`          | ✅   | List guests (paginated, filtered) |
+| POST   | `/api/guests`          | ✅   | Add new guest                     |
+| DELETE | `/api/guests/:id`      | ✅   | Delete guest                      |
+| POST   | `/api/guests/:id/send` | ✅   | Send SMS/WhatsApp                 |
+| GET    | `/api/guests/export`   | ✅   | Export CSV                        |
+| GET    | `/api/rsvp/:token`     | ❌   | Get RSVP data                     |
+| POST   | `/api/rsvp/:token`     | ❌   | Submit RSVP                       |
+| GET    | `/api/stats`           | ✅   | Dashboard stats                   |
 
 ## 📱 Phone Number Format
 
 Israeli numbers are accepted as:
+
 - `0501234567` → normalized to `+972501234567`
 - `+972501234567` → used as-is
 
