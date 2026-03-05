@@ -95,7 +95,8 @@ const start = async () => {
     server = app.listen(PORT, () => {
       console.info(`Server running on port ${PORT}`);
     });
-  } catch {
+  } catch (error) {
+    console.error("🔥 Fatal startup error:", error);
     process.exit(1);
   }
 };

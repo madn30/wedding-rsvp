@@ -129,11 +129,12 @@ export const initWhatsAppClient = (): void => {
     } catch {}
   });
 
-  client.initialize().catch(() => {
-    ready = false;
-    client = null;
-  });
-};
+  client.initialize().catch((err) => {
+      console.error("🔥 WhatsApp Initialization Failed:", err);
+      ready = false;
+      client = null;
+    });
+  };
 
 export const isWhatsAppReady = (): boolean => ready;
 
