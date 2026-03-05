@@ -52,7 +52,7 @@ export const buildCalendarLink = (event: CalendarEvent | null): string => {
       if (!isNaN(startDate.getTime())) {
         datesParam = `${formatToGoogleCal(startDate)}/${formatToGoogleCal(endDate)}`;
       }
-    } catch (e) {}
+    } catch {}
   }
 
   return (
@@ -118,7 +118,7 @@ export const initWhatsAppClient = (): void => {
         { phone: normalized },
         { $set: { whatsappReplied: true } },
       );
-    } catch (err) {}
+    } catch {}
   });
 
   client.initialize().catch(() => {

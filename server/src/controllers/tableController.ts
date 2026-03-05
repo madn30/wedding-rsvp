@@ -43,7 +43,7 @@ export const createTable = asyncHandler(
 
 export const updateTable = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { seatedGuests: _ignored, ...updates } = req.body;
+    const { ...updates } = req.body;
 
     const table = await Table.findByIdAndUpdate(
       req.params.id,

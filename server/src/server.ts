@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -86,18 +87,18 @@ const start = async () => {
     await connectDB();
 
     if (process.env.WHATSAPP_ENABLED === "true") {
-      initWhatsAppClient();
-    } else {
+      await initWhatsAppClient();
     }
 
     initScheduler();
 
-    server = app.listen(PORT, () => {});
-  } catch (err) {
+    server = app.listen(PORT, () => {
+      console.error(`Server running on port ${PORT}`);
+    });
+  } catch {
     process.exit(1);
   }
 };
-
 process.on("SIGINT", () => shutdown());
 process.on("SIGTERM", () => shutdown());
 

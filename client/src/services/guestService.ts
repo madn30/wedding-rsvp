@@ -53,7 +53,7 @@ export const exportCSV = (): void => {
       a.click();
       window.URL.revokeObjectURL(blobUrl);
     })
-    .catch((err) => {
+    .catch(() => {
       alert("שגיאה ביצוא הקובץ");
     });
 };

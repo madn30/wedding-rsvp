@@ -55,6 +55,14 @@ const SeatingEngine: React.FC = () => {
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [hoveredTableId, setHoveredTableId] = useState<string | null>(null);
 
+  const justDroppedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (justDroppedTimer.current) clearTimeout(justDroppedTimer.current);
+    };
+  }, []);
+
   const canvasRef = useRef<HTMLDivElement>(null);
   const preDragPos = useRef<{ x: number; y: number } | null>(null);
 
@@ -136,13 +144,9 @@ const SeatingEngine: React.FC = () => {
   const handleDragStart = useCallback(
     ({ active }: DragStartEvent) => {
       setActiveDragId(String(active.id));
-      if (active.data.current?.type === "table") {
-        const table = tables.find(
-          (t) => t._id === active.data.current?.tableId,
-        );
-        if (table) preDragPos.current = { x: table.x, y: table.y };
-        setActiveTable(active.data.current?.tableId ?? null);
-      }
+      const table = tables.find((t) => t._id === active.data.current?.tableId);
+      if (table) preDragPos.current = { x: table.x, y: table.y };
+      setActiveTable(active.data.current?.tableId ?? null);
     },
     [tables, setActiveTable],
   );
@@ -353,6 +357,18 @@ const SeatingEngine: React.FC = () => {
                 </p>
               </div>
             )}
+            <button
+              onClick={() => setShowAddElementPrompt(true)}
+              className="flex items-center gap-1.5 px-3 py-2 bg-purple-900/30 border border-purple-500/30 rounded-lg text-xs font-semibold text-purple-300 hover:bg-purple-900/50 transition"
+            >
+              <Layers size={13} /> הוסף אלמנט
+            </button>
+            <button
+              onClick={() => setShowAddPrompt(true)}
+              className="flex items-center gap-1.5 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-xs font-semibold hover:bg-white/10 transition"
+            >
+              <Plus size={13} /> הוסף שולחן
+            </button>
           </div>
         </div>
 

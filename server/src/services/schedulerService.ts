@@ -70,7 +70,7 @@ async function runReminder30(): Promise<void> {
         calendar_link: calendarLink,
       });
       await sendToGuest(guest.phone, message);
-    } catch (err) {}
+    } catch {}
   }
 
   const attendingGuests = await Guest.find({ response: "yes" });
@@ -87,7 +87,7 @@ async function runReminder30(): Promise<void> {
         calendar_link: calendarLink,
       });
       await sendToGuest(guest.phone, message);
-    } catch (err) {}
+    } catch {}
   }
 }
 
@@ -116,7 +116,7 @@ async function runDayOfGreeting(): Promise<void> {
         waze_link: WAZE_BASE,
       });
       await sendToGuest(guest.phone, message);
-    } catch (err) {}
+    } catch {}
   }
 }
 
@@ -134,15 +134,15 @@ async function runDailyLockCheck(): Promise<void> {
 
 export function initScheduler(): void {
   cron.schedule("0 7 11 1 *", () => {
-    runReminder30().catch((err) => {});
+    runReminder30().catch(() => {});
   });
 
   cron.schedule("0 7 10 2 *", () => {
-    runDayOfGreeting().catch((err) => {});
+    runDayOfGreeting().catch(() => {});
   });
 
   cron.schedule("1 0 * * *", () => {
-    runDailyLockCheck().catch((err) => {});
+    runDailyLockCheck().catch(() => {});
   });
 }
 

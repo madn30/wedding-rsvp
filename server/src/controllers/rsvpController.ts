@@ -82,9 +82,7 @@ export const submitRSVP = asyncHandler(
 
     if (response === "no" && previousResponse !== "no" && isWhatsAppReady()) {
       const { declinedReply } = settings.templates;
-      sendDeclinedReply(guest.phone, guest.name, declinedReply).catch(
-        (err) => {},
-      );
+      sendDeclinedReply(guest.phone, guest.name, declinedReply).catch(() => {});
     }
 
     res.status(200).json({

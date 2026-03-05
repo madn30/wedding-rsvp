@@ -20,6 +20,6 @@ const seed = async () => {
   process.exit(0);
 };
 
-seed().catch((err) => {
+seed().catch(() => {
   process.exit(1);
 });

@@ -36,7 +36,6 @@ export const errorHandler = (
   err: MongoError & AppError,
   req: Request,
   res: Response,
-  _next: NextFunction,
 ): void => {
   let error = { ...err };
   error.message = err.message;
