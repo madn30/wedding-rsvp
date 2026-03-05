@@ -102,12 +102,12 @@ export const initWhatsAppClient = (): void => {
   });
 
   client.on("authenticated", () => {
-    console.info("📩 Authenticated successfully!"); 
+    console.info("📩 Authenticated successfully!");
   });
 
   client.on("auth_failure", (msg) => {
     ready = false;
-    console.info("❌ Auth failure:", msg); 
+    console.info("❌ Auth failure:", msg);
   });
 
   client.on("disconnected", () => {
@@ -130,11 +130,11 @@ export const initWhatsAppClient = (): void => {
   });
 
   client.initialize().catch((err) => {
-      console.error("🔥 WhatsApp Initialization Failed:", err);
-      ready = false;
-      client = null;
-    });
-  };
+    console.error("🔥 WhatsApp Initialization Failed:", err);
+    ready = false;
+    client = null;
+  });
+};
 
 export const isWhatsAppReady = (): boolean => ready;
 

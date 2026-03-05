@@ -1,22 +1,35 @@
 import { Request, Response, NextFunction } from "express";
 import { Guest } from "../models/Guest";
 import { AppSettings } from "../models/AppSettings";
+import { Event as EventModel } from "../models/Event";
 import { AppError, asyncHandler } from "../utils/helpers";
 import { isWhatsAppReady, sendDeclinedReply } from "../whatsapp";
 
-const WEDDING_DATE = new Date("2026-02-10T00:00:00.000+02:00");
-
 export const getRSVP = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
+    const activeEvent = await EventModel.findOne({ isActive: true });
+
+    if (!activeEvent) {
+      return next(new AppError("No active event found.", 404));
+    }
+
     const guest = await Guest.findOne({ token: req.params.token }).select(
       "name response respondedAt numberOfGuests foodPreference transportNeeded specialRequests",
     );
+
     if (!guest) {
       return next(new AppError("RSVP link is invalid or has expired.", 404));
     }
 
     const settings = await AppSettings.getSingleton();
-    const isExpired = new Date() > WEDDING_DATE || settings.rsvpLocked;
+
+    const isExpired =
+      new Date() > new Date(activeEvent.date) || settings.rsvpLocked;
+
+    const coupleNames =
+      activeEvent.groomName && activeEvent.brideName
+        ? `${activeEvent.groomName} & ${activeEvent.brideName}`
+        : activeEvent.name;
 
     res.status(200).json({
       success: true,
@@ -28,19 +41,26 @@ export const getRSVP = asyncHandler(
         foodPreference: guest.foodPreference,
         transportNeeded: guest.transportNeeded,
         specialRequests: guest.specialRequests,
-        coupleNames: process.env.COUPLE_NAMES || "החתן והכלה",
-        weddingDate: process.env.WEDDING_DATE || "",
-        venue: process.env.WEDDING_VENUE || "",
+
+        coupleNames: coupleNames,
+        weddingDate: activeEvent.date,
+        startTime: activeEvent.startTime,
+        venue: activeEvent.location,
         isExpired,
       },
     });
   },
 );
-
 export const submitRSVP = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
+    const activeEvent = await EventModel.findOne({ isActive: true });
     const settings = await AppSettings.getSingleton();
-    if (new Date() > WEDDING_DATE || settings.rsvpLocked) {
+
+    if (
+      !activeEvent ||
+      new Date() > new Date(activeEvent.date) ||
+      settings.rsvpLocked
+    ) {
       return next(
         new AppError("The event is over and RSVP updates are closed.", 403),
       );
