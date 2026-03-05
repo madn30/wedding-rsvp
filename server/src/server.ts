@@ -14,10 +14,11 @@ import authRoutes from './routes/authRoutes';
 import guestRoutes from './routes/guestRoutes';
 import rsvpRoutes from './routes/rsvpRoutes';
 import statsRoutes from './routes/statsRoutes';
-import whatsappRoutes from './routes/whatsappRoutes';
+// import whatsappRoutes from './routes/whatsappRoutes';
 import messageRoutes from './routes/messageRoutes';
 import tableRoutes from './routes/tableRoutes';
 import settingsRoutes from './routes/settingsRoutes';
+import eventRoutes from './routes/eventRoutes';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -66,10 +67,11 @@ app.use('/api/admin', authRoutes);
 app.use('/api/guests', guestRoutes);
 app.use('/api/rsvp', rsvpRoutes);
 app.use('/api/stats', statsRoutes);
-app.use('/api/whatsapp', whatsappRoutes);   // GET /api/whatsapp/status
+// app.use('/api/whatsapp', whatsappRoutes);   // GET /api/whatsapp/status
 app.use('/api/messages', messageRoutes);    // POST /api/messages/send-invitation
 app.use('/api/tables', tableRoutes);        // GET|POST /api/tables  PUT|DELETE /api/tables/:id  POST|DELETE /api/tables/:id/seat/:guestId
-app.use('/api/settings', settingsRoutes);  // GET|PUT /api/settings  POST /api/settings/lock  POST /api/settings/trigger/*
+app.use('/api/settings', settingsRoutes);
+app.use('/api/events',   eventRoutes);  // GET|PUT /api/settings  POST /api/settings/lock  POST /api/settings/trigger/*
 
 // 7. 404 & Error Handling
 app.use((_req, res) => {

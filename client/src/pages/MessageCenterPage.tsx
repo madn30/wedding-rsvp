@@ -6,7 +6,7 @@
  *   • Viewing scheduler status and triggering jobs manually
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import {
   MessageSquare,
@@ -19,6 +19,11 @@ import {
   Info,
   ChevronDown,
   ChevronUp,
+  Clock,
+  CheckCircle2,
+  Zap,
+  MapPin,
+  CalendarClock,
 } from 'lucide-react';
 import {
   getSettings,
@@ -29,6 +34,7 @@ import {
   MessageTemplates,
   AppSettings,
 } from '../services/settingsService';
+import { useEventContext } from '../context/EventContext';
 
 // ── Template field descriptor ─────────────────────────────────────────────────
 
@@ -140,9 +146,139 @@ const TemplateCard = ({ field, value, onChange }: TemplateCardProps) => {
   );
 };
 
+// ── Automatic schedule ────────────────────────────────────────────────────────
+
+interface ScheduleItem {
+  date: Date;
+  time: string;
+  label: string;
+  sublabel: string;
+  icon: React.ReactNode;
+  type: 'auto' | 'instant';
+}
+
+function addDays(isoDate: string, days: number): Date {
+  const d = new Date(isoDate + 'T00:00:00');
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+const ScheduleRow = ({ item }: { item: ScheduleItem }) => {
+  const now = new Date();
+  const isPast = item.type !== 'instant' && item.date < now;
+  const isInstant = item.type === 'instant';
+
+  const dateStr = isInstant
+    ? null
+    : item.date.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+  return (
+    <div
+      className={`flex items-center gap-4 px-4 py-3.5 rounded-xl border transition-colors ${
+        isPast
+          ? 'bg-white/[0.02] border-white/5'
+          : isInstant
+            ? 'bg-blue-500/5 border-blue-500/15'
+            : 'bg-[#c9a84c]/5 border-[#c9a84c]/15'
+      }`}
+    >
+      <div
+        className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+          isPast
+            ? 'bg-white/5 text-white/25'
+            : isInstant
+              ? 'bg-blue-500/15 text-blue-400'
+              : 'bg-[#c9a84c]/15 text-[#c9a84c]'
+        }`}
+      >
+        {isPast ? <CheckCircle2 size={15} className="text-white/20" /> : item.icon}
+      </div>
+
+      <div className="flex-1 min-w-0 text-right">
+        <p className={`text-sm font-semibold ${isPast ? 'text-white/25' : 'text-[#faf6ef]'}`}>
+          {item.label}
+        </p>
+        <p className={`text-xs mt-0.5 ${isPast ? 'text-white/15' : 'text-white/40'}`}>
+          {item.sublabel}
+        </p>
+      </div>
+
+      <div className="shrink-0 text-left">
+        {isInstant ? (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-bold tracking-wider">
+            <Zap size={9} className="text-blue-400" /> מיידי
+          </span>
+        ) : (
+          <div className={`text-right ${isPast ? 'opacity-30' : ''}`}>
+            <p className="text-xs font-mono font-bold text-[#e8c97e]">{dateStr}</p>
+            <p className="text-[10px] text-white/40 flex items-center justify-end gap-1 mt-0.5">
+              <Clock size={9} className="text-white/40" /> {item.time}
+            </p>
+          </div>
+        )}
+        {isPast && (
+          <span className="block text-[9px] text-white/20 text-center mt-1">בוצע</span>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export const MessageCenterPage = () => {
+  const { activeEvent } = useEventContext();
+
+  const scheduleItems = useMemo((): ScheduleItem[] => {
+    if (!activeEvent) return [];
+    const eventDate = addDays(activeEvent.date, 0);
+    const reminder30Date = addDays(activeEvent.date, -30);
+    const lockDate = addDays(activeEvent.date, 1);
+    const eventTime = activeEvent.startTime || '09:00';
+    return [
+      {
+        date: reminder30Date,
+        time: '09:00',
+        label: 'תזכורת 30 יום — ממתינים',
+        sublabel: 'אורחים שטרם השיבו',
+        icon: <Bell size={15} className="text-[#c9a84c]" />,
+        type: 'auto',
+      },
+      {
+        date: reminder30Date,
+        time: '09:00',
+        label: 'תזכורת 30 יום — מגיעים',
+        sublabel: 'אורחים שאישרו הגעה',
+        icon: <Bell size={15} className="text-[#c9a84c]" />,
+        type: 'auto',
+      },
+      {
+        date: eventDate,
+        time: eventTime,
+        label: 'ברכת יום האירוע',
+        sublabel: 'למאשרים בלבד + ניווט Waze',
+        icon: <CalendarCheck size={15} className="text-[#c9a84c]" />,
+        type: 'auto',
+      },
+      {
+        date: lockDate,
+        time: '00:01',
+        label: 'נעילה אוטומטית',
+        sublabel: 'טפסי RSVP ננעלים',
+        icon: <Lock size={15} className="text-[#c9a84c]" />,
+        type: 'auto',
+      },
+      {
+        date: new Date(0),
+        time: '',
+        label: 'מענה אוטומטי לדחייה',
+        sublabel: 'מיידי בעת לחיצת "לא מגיע"',
+        icon: <Zap size={15} className="text-blue-400" />,
+        type: 'instant',
+      },
+    ];
+  }, [activeEvent]);
+
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [templates, setTemplates] = useState<MessageTemplates>({
     invitation: '',
@@ -239,11 +375,57 @@ export const MessageCenterPage = () => {
 
   return (
     <div dir="rtl" className="max-w-4xl mx-auto space-y-8">
-      {/* Page header */}
       <div>
         <h1 className="text-3xl font-serif text-[#faf6ef] tracking-tight">מרכז הודעות</h1>
         <p className="text-white/40 text-sm mt-1">ניהול תבניות WhatsApp ואוטומציה</p>
       </div>
+
+      {activeEvent ? (
+        <div className="flex items-center gap-4 bg-[#c9a84c]/8 border border-[#c9a84c]/25 rounded-2xl px-5 py-4">
+          <div className="shrink-0 w-9 h-9 rounded-full bg-[#c9a84c]/15 flex items-center justify-center">
+            <CalendarClock size={16} className="text-[#c9a84c]" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] text-[#c9a84c]/70 font-semibold uppercase tracking-widest mb-0.5">אירוע פעיל</p>
+            <p className="text-[#faf6ef] font-semibold text-sm truncate">{activeEvent.name}</p>
+            <p className="text-white/40 text-xs mt-0.5">
+              {new Date(activeEvent.date + 'T00:00:00').toLocaleDateString('he-IL', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+              })}
+            </p>
+          </div>
+          <div className="flex items-center gap-4 text-xs text-white/45 shrink-0">
+            <span className="flex items-center gap-1.5">
+              <Clock size={11} className="text-white/25" />
+              {activeEvent.startTime}
+            </span>
+            {activeEvent.location && (
+              <span className="flex items-center gap-1.5 max-w-[160px]">
+                <MapPin size={11} className="shrink-0 text-white/25" />
+                <span className="truncate">{activeEvent.location}</span>
+              </span>
+            )}
+          </div>
+          <span className="shrink-0 w-2 h-2 rounded-full bg-[#c9a84c] animate-pulse" />
+        </div>
+      ) : (
+        <div className="flex items-center gap-3 bg-white/[0.02] border border-white/8 rounded-2xl px-5 py-4 text-white/35">
+          <CalendarClock size={16} className="text-white/20" />
+          <p className="text-sm">
+            לא נבחר אירוע פעיל — עבור ל
+            <a
+              href="/admin/events"
+              className="text-[#c9a84c]/70 hover:text-[#c9a84c] underline-offset-2 hover:underline transition-colors mx-1"
+            >
+              ניהול אירועים
+            </a>
+            כדי לבחור
+          </p>
+        </div>
+      )}
 
       {/* ── RSVP Lock panel ── */}
       <section className="bg-[#0d1b2a]/80 border border-[#c9a84c]/15 rounded-2xl p-6">
@@ -324,25 +506,25 @@ export const MessageCenterPage = () => {
           </button>
         </div>
 
-        {/* Scheduler schedule info */}
-        <div className="mt-5 pt-4 border-t border-white/5 grid grid-cols-2 gap-3 text-xs text-white/30">
-          <div className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-[#c9a84c]/50" />
-            <span>תזכורת 30 יום: 11.01.2026 ב-09:00</span>
+      </section>
+
+      {/* ── Automatic schedule ── */}
+      <section className="bg-[#0d1b2a]/80 border border-[#c9a84c]/15 rounded-2xl p-6">
+        <h2 className="text-[#faf6ef] font-semibold mb-5 flex items-center gap-2">
+          <Clock size={16} className="text-[#c9a84c]" />
+          לוח זמנים אוטומטי
+        </h2>
+        {scheduleItems.length === 0 ? (
+          <p className="text-white/30 text-sm text-center py-4">
+            הגדר אירוע פעיל כדי לראות את לוח הזמנים
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {scheduleItems.map((item, i) => (
+              <ScheduleRow key={i} item={item} />
+            ))}
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-[#c9a84c]/50" />
-            <span>יום האירוע: 10.02.2026 ב-09:00</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/50" />
-            <span>נעילה אוטומטית: יום לאחר האירוע</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-blue-500/50" />
-            <span>מענה דחייה: אוטומטי בעת לחיצה</span>
-          </div>
-        </div>
+        )}
       </section>
 
       {/* ── Message templates ── */}

@@ -107,27 +107,25 @@ const TableItem: React.FC<TableItemProps> = memo(
     const translateY = transform?.y ?? 0;
 
     // ── Shared base style ────────────────────────────────────────────────────
-    const baseStyle: React.CSSProperties = {
+const baseStyle: React.CSSProperties = {
       position: 'absolute',
-      left: `${table.x}%`,
-      top: `${table.y}%`,
+      // Center natively using calc() instead of translate(-50%, -50%)
+      left: `calc(${table.x}% - ${dims.w / 2}px)`,
+      top: `calc(${table.y}% - ${dims.h / 2}px)`,
       width: dims.w,
       height: dims.h,
       borderRadius: getBorderRadius(table.type),
       border: `2px solid`,
-      // Centering + drag delta + visual rotation
-      transform: `translate(-50%, -50%) translate(${translateX}px, ${translateY}px) rotate(${table.rotation ?? 0}deg)`,
+      // Transform now ONLY handles the dragging movement and rotation
+      transform: `translate(${translateX}px, ${translateY}px) rotate(${table.rotation ?? 0}deg)`,
       zIndex: isDragging ? 200 : isSelected ? 20 : 10,
       opacity: 1,
       cursor: isDragging ? 'grabbing' : 'grab',
-      // GPU layer always on for smooth dragging and rotation/size changes
       willChange: 'transform',
       transition: isDragging ? 'none' : 'border-color 0.12s, box-shadow 0.12s, background 0.12s',
       userSelect: 'none',
-      // Critical for mobile: prevents scroll from interfering with drag
       touchAction: 'none',
     };
-
     const handleClick = useCallback(
       (e: React.MouseEvent) => {
         e.stopPropagation();

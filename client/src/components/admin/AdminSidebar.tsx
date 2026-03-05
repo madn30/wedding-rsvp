@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { LayoutDashboard, Users, Armchair, LogOut, MessageSquare } from 'lucide-react';
+import { useEventContext } from '../../context/EventContext';
+import { LayoutDashboard, Users, Armchair, LogOut, MessageSquare, CalendarClock } from 'lucide-react';
 
 interface AdminSidebarProps {
   isOpen: boolean;
@@ -8,14 +9,16 @@ interface AdminSidebarProps {
 }
 
 const NAV_ITEMS = [
-  { to: '/admin/dashboard',      icon: <LayoutDashboard size={18} />, label: 'לוח בקרה'       },
-  { to: '/admin/guests',         icon: <Users size={18} />,           label: 'אורחים'          },
-  { to: '/admin/seating',        icon: <Armchair size={18} />,        label: 'סידורי הושבה'    },
-  { to: '/admin/message-center', icon: <MessageSquare size={18} />,   label: 'מרכז הודעות'    },
+  { to: '/admin/dashboard',      icon: <LayoutDashboard size={18} />, label: 'לוח בקרה'    },
+  { to: '/admin/guests',         icon: <Users size={18} />,           label: 'אורחים'       },
+  { to: '/admin/seating',        icon: <Armchair size={18} />,        label: 'סידורי הושבה' },
+  { to: '/admin/message-center', icon: <MessageSquare size={18} />,   label: 'מרכז הודעות' },
+  { to: '/admin/events',         icon: <CalendarClock size={18} />,   label: 'אירועים'      },
 ];
 
 export const AdminSidebar = ({ isOpen, onClose }: AdminSidebarProps) => {
   const { admin, logout } = useAuth();
+  const { activeEvent } = useEventContext();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -67,31 +70,43 @@ export const AdminSidebar = ({ isOpen, onClose }: AdminSidebarProps) => {
         {/* קישורי ניווט */}
         <nav className="flex-1 p-4 flex flex-col gap-2 mt-2" aria-label="תפריט ניהול">
           {NAV_ITEMS.map(({ to, icon, label }) => (
-            <NavLink
-              key={to}
-              to={to}
-              onClick={onClose}
-              className={({ isActive }) => `
-                relative flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-300 ease-out group overflow-hidden
-                ${isActive 
-                  ? 'bg-gradient-to-l from-[#c9a84c]/10 to-transparent text-[#e8c97e] font-semibold' 
-                  : 'text-white/50 hover:bg-white/[0.03] hover:text-[#faf6ef] hover:-translate-x-1'}
-              `}
-            >
-              {({ isActive }) => (
-                <>
-                  {isActive && (
-                    <div className="absolute right-0 top-2 bottom-2 w-1 bg-gradient-to-b from-[#c9a84c] to-[#e8c97e] rounded-l-md shadow-[0_0_10px_rgba(201,168,76,0.5)]" />
-                  )}
-                  
-                  <span className={`shrink-0 transition-all duration-300 ${isActive ? 'scale-110 drop-shadow-[0_0_5px_rgba(201,168,76,0.4)]' : 'group-hover:scale-110 group-hover:text-white'}`}>
-                    {icon}
-                  </span>
-                  
-                  <span className="text-sm tracking-wide z-10">{label}</span>
-                </>
+            <div key={to}>
+              <NavLink
+                to={to}
+                onClick={onClose}
+                className={({ isActive }) => `
+                  relative flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-300 ease-out group overflow-hidden
+                  ${isActive
+                    ? 'bg-gradient-to-l from-[#c9a84c]/10 to-transparent text-[#e8c97e] font-semibold'
+                    : 'text-white/50 hover:bg-white/[0.03] hover:text-[#faf6ef] hover:-translate-x-1'}
+                `}
+              >
+                {({ isActive }) => (
+                  <>
+                    {isActive && (
+                      <div className="absolute right-0 top-2 bottom-2 w-1 bg-gradient-to-b from-[#c9a84c] to-[#e8c97e] rounded-l-md shadow-[0_0_10px_rgba(201,168,76,0.5)]" />
+                    )}
+                    <span className={`shrink-0 transition-all duration-300 ${isActive ? 'scale-110 drop-shadow-[0_0_5px_rgba(201,168,76,0.4)]' : 'group-hover:scale-110 group-hover:text-white'}`}>
+                      {icon}
+                    </span>
+                    <span className="text-sm tracking-wide z-10">{label}</span>
+                    {to === '/admin/events' && activeEvent && (
+                      <span className="mr-auto shrink-0 w-1.5 h-1.5 rounded-full bg-[#c9a84c] animate-pulse" />
+                    )}
+                  </>
+                )}
+              </NavLink>
+              {to === '/admin/events' && activeEvent && (
+                <div className="px-4 pb-1 -mt-1 space-y-0.5">
+                  <p className="text-[10px] text-[#c9a84c]/65 font-semibold truncate">
+                    {activeEvent.name}
+                  </p>
+                  <p className="text-[9px] text-[#c9a84c]/35 font-mono">
+                    {activeEvent.date.split('-').reverse().join('.')} · {activeEvent.startTime}
+                  </p>
+                </div>
               )}
-            </NavLink>
+            </div>
           ))}
         </nav>
 
