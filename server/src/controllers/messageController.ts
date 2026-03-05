@@ -33,12 +33,12 @@ export const sendInvitationMessage = async (
   }
 
   if (!isWhatsAppReady()) {
-    res.status(503).json({
-      success: false,
-      message:
-        "WhatsApp client is not ready. " +
-        "Start the server with WHATSAPP_ENABLED=true and scan the QR code in the terminal.",
-    });
+    const statusMessage =
+      process.env.WHATSAPP_ENABLED === "true"
+        ? "WhatsApp is starting or needs QR scan. Check server logs."
+        : "WhatsApp is disabled in .env settings.";
+
+    res.status(503).json({ success: false, message: statusMessage });
     return;
   }
 
