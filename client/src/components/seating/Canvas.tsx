@@ -1,4 +1,4 @@
-import React, { forwardRef } from "react";
+import React, { forwardRef, useState, useLayoutEffect } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import TableItem from "./TableItem";
 import { SeatingTable } from "../../store/seatingStore";
@@ -6,12 +6,12 @@ import { SeatingTable } from "../../store/seatingStore";
 interface CanvasProps {
   tables: SeatingTable[];
   activeTableId: string | null;
-
   hoveredTableId: string | null;
   isLoading: boolean;
   onSelectTable: (id: string | null) => void;
-
   onDoubleClickTable?: () => void;
+  isDraggingTable?: boolean;
+  justDroppedTableId?: string | null;
 }
 
 const Canvas = forwardRef<HTMLDivElement, CanvasProps>(
@@ -23,25 +23,53 @@ const Canvas = forwardRef<HTMLDivElement, CanvasProps>(
       isLoading,
       onSelectTable,
       onDoubleClickTable,
+      isDraggingTable = false,
+      justDroppedTableId = null,
     },
     ref,
   ) => {
+    const [dimensions, setDimensions] = useState({ w: 0, h: 0 });
+
     const { setNodeRef: setDropRef } = useDroppable({
       id: "canvas",
       data: { type: "canvas" },
     });
 
+    useLayoutEffect(() => {
+      const element = (ref as React.MutableRefObject<HTMLDivElement | null>)
+        ?.current;
+      if (!element) return;
+
+      const resizeObserver = new ResizeObserver((entries) => {
+        if (entries[0]) {
+          const { width, height } = entries[0].contentRect;
+          setDimensions({ w: width, h: height });
+        }
+      });
+
+      resizeObserver.observe(element);
+
+      const rect = element.getBoundingClientRect();
+      setDimensions({ w: rect.width, h: rect.height });
+
+      return () => resizeObserver.disconnect();
+    }, [ref]);
+
     const mergedRef = (node: HTMLDivElement | null) => {
       setDropRef(node);
-      if (typeof ref === "function") ref(node);
-      else if (ref)
+      if (typeof ref === "function") {
+        ref(node);
+      } else if (ref) {
         (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+      }
     };
+
+    const canvasScale = dimensions.w > 0 ? dimensions.w / 800 : 1;
 
     return (
       <div
         ref={mergedRef}
-        className="relative w-full h-full rounded-2xl shadow-2xl select-none"
+        className="relative w-full h-full min-h-[500px] rounded-2xl shadow-2xl select-none overflow-hidden"
         style={{
           background:
             "radial-gradient(ellipse at center, #243b5540 0%, #0d1b2a 100%)",
@@ -71,16 +99,22 @@ const Canvas = forwardRef<HTMLDivElement, CanvasProps>(
           </div>
         )}
 
-        {tables.map((table) => (
-          <TableItem
-            key={table._id}
-            table={table}
-            isSelected={activeTableId === table._id}
-            isGuestHovering={hoveredTableId === table._id}
-            onSelect={onSelectTable}
-            onDoubleClick={onDoubleClickTable}
-          />
-        ))}
+        {}
+        {dimensions.w > 0 &&
+          tables.map((table) => (
+            <TableItem
+              key={table._id}
+              table={table}
+              isSelected={activeTableId === table._id}
+              isGuestHovering={hoveredTableId === table._id}
+              onSelect={onSelectTable}
+              onDoubleClick={onDoubleClickTable}
+              canvasScale={canvasScale}
+              canvasDims={dimensions}
+              isDraggingTable={isDraggingTable}
+              isJustDropped={justDroppedTableId === table._id}
+            />
+          ))}
       </div>
     );
   },

@@ -183,35 +183,146 @@ function addMissingImports(ast, used, imported, components, currentFile) {
   });
 }
 
-function removeUnusedImports(ast, used) {
-  traverse(ast, {
-    ImportDeclaration(p) {
-      p.node.specifiers = p.node.specifiers.filter((s) =>
-        used.has(s.local.name),
-      );
-      if (p.node.specifiers.length === 0) p.remove();
-    },
-  });
-}
-
-function removeUnusedBindings(ast) {
+function removeUnusedVariablesAndParams(ast) {
   traverse(ast, {
     VariableDeclarator(p) {
       const id = p.node.id;
-      const binding = p.scope.getBinding(id.name);
-      if (t.isIdentifier(id) && binding && !binding.referenced) p.remove();
+
+      // 1. Remove standard unused variables (e.g., const x = 5;)
+      if (t.isIdentifier(id)) {
+        const binding = p.scope.getBinding(id.name);
+        if (binding && !binding.referenced) p.remove();
+      }
+      // 2. Remove unused array destructuring (e.g., const [justDroppedTableId, setJustDroppedTableId] = useState())
+      else if (t.isArrayPattern(id)) {
+        // Go backwards to safely pop from the end
+        for (let i = id.elements.length - 1; i >= 0; i--) {
+          const el = id.elements[i];
+          if (t.isIdentifier(el)) {
+            const binding = p.scope.getBinding(el.name);
+            if (binding && !binding.referenced && binding.identifier === el) {
+              if (i === id.elements.length - 1) {
+                // If it's the last element, we can safely shrink the array
+                id.elements.splice(i, 1);
+              } else {
+                // If it's earlier in the array, replace with null to preserve the position of later variables: const [, setX] = ...
+                id.elements[i] = null;
+              }
+            }
+          }
+        }
+
+        // If the entire array pattern is empty or all elements are null, remove the whole variable declaration
+        if (
+          id.elements.length === 0 ||
+          id.elements.every((el) => el === null)
+        ) {
+          p.remove();
+        }
+      }
+    },
+
+    // 3. Remove unused destructured object properties (e.g., in React props or const { x } = y;)
+    ObjectProperty(p) {
+      if (p.parentPath.isObjectPattern()) {
+        const value = p.node.value;
+        let targetIdNode = null;
+
+        if (t.isIdentifier(value)) {
+          targetIdNode = value;
+        } else if (t.isAssignmentPattern(value) && t.isIdentifier(value.left)) {
+          targetIdNode = value.left;
+        }
+
+        if (targetIdNode) {
+          const binding = p.scope.getBinding(targetIdNode.name);
+          if (
+            binding &&
+            !binding.referenced &&
+            binding.identifier === targetIdNode
+          ) {
+            p.remove();
+          }
+        }
+      }
+    },
+
+    // 4. Remove unused rest elements (e.g., const { x, ...rest } = y;)
+    RestElement(p) {
+      if (p.parentPath.isObjectPattern() && t.isIdentifier(p.node.argument)) {
+        const binding = p.scope.getBinding(p.node.argument.name);
+        if (
+          binding &&
+          !binding.referenced &&
+          binding.identifier === p.node.argument
+        ) {
+          p.remove();
+        }
+      }
+    },
+
+    // 5. Remove unused parameters from functions and arrow functions
+    Function(p) {
+      const params = p.get("params");
+      for (let i = params.length - 1; i >= 0; i--) {
+        const param = params[i];
+
+        if (param.isIdentifier()) {
+          const binding = p.scope.getBinding(param.node.name);
+          if (binding && !binding.referenced) {
+            param.remove();
+          } else {
+            break;
+          }
+        }
+
+        if (param.isObjectPattern() && param.node.properties.length === 0) {
+          if (i === params.length - 1) {
+            param.remove();
+          } else {
+            break;
+          }
+        }
+      }
+    },
+
+    // 6. Remove unused error param in catch blocks
+    CatchClause(p) {
+      if (p.node.param && t.isIdentifier(p.node.param)) {
+        const binding = p.scope.getBinding(p.node.param.name);
+        if (binding && !binding.referenced) {
+          p.node.param = null;
+        }
+      }
     },
   });
 }
 
-function cleanupStatements(ast) {
+function cleanupStatements(ast, file = "") {
+  const normalizedFile = file.replace(/\\/g, "/");
+
+  const isServerFile =
+    normalizedFile.includes("/server/") ||
+    normalizedFile.includes("/api/") ||
+    normalizedFile.includes("/routes/") ||
+    normalizedFile.includes("/config/");
+
   traverse(ast, {
     CallExpression(p) {
       if (
         t.isMemberExpression(p.node.callee) &&
         t.isIdentifier(p.node.callee.object, { name: "console" })
       ) {
-        p.remove();
+        const methodName = p.node.callee.property.name;
+
+        if (isServerFile) {
+          const keepList = ["info", "error"];
+          if (!keepList.includes(methodName)) {
+            p.remove();
+          }
+        } else {
+          p.remove();
+        }
       }
     },
     DebuggerStatement(p) {
@@ -223,12 +334,14 @@ function cleanupStatements(ast) {
 function transform(code, components, file) {
   const ast = parse(code, file);
   if (!ast) return code;
+
   const used = collectUsed(ast);
   const imported = collectImports(ast);
-  removeUnusedImports(ast, used);
-  removeUnusedBindings(ast);
-  cleanupStatements(ast);
+
+  removeUnusedVariablesAndParams(ast);
+  cleanupStatements(ast, file);
   addMissingImports(ast, used, imported, components, file);
+
   return generate(ast, { comments: false, retainLines: true }).code;
 }
 

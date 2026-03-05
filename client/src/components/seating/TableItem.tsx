@@ -9,6 +9,14 @@ interface TableItemProps {
   isGuestHovering: boolean;
   onSelect: (id: string) => void;
   onDoubleClick?: () => void;
+
+  canvasScale?: number;
+
+  canvasDims?: { w: number; h: number };
+
+  isDraggingTable?: boolean;
+
+  isJustDropped?: boolean;
 }
 
 const ELEMENT_TYPES = new Set(["dj", "dance", "bar", "stage"]);
@@ -81,7 +89,17 @@ function getBorderRadius(type: string): string {
 }
 
 const TableItem: React.FC<TableItemProps> = memo(
-  ({ table, isSelected, isGuestHovering, onSelect, onDoubleClick }) => {
+  ({
+    table,
+    isSelected,
+    isGuestHovering,
+    onSelect,
+    onDoubleClick,
+    canvasScale = 1,
+    canvasDims,
+    isDraggingTable = false,
+    isJustDropped = false,
+  }) => {
     const isElem = isElementType(table.type);
 
     const {
@@ -109,11 +127,35 @@ const TableItem: React.FC<TableItemProps> = memo(
     );
 
     const isFull = !isElem && table.seatedGuests.length >= table.capacity;
-    const dims = getTableDims(table.type, table.size);
-    const highlighting = !isElem && (isGuestOver || isGuestHovering);
+    const baseDims = getTableDims(table.type, table.size);
 
-    const translateX = transform?.x ?? 0;
-    const translateY = transform?.y ?? 0;
+    const dims = {
+      w: Math.round(baseDims.w * canvasScale),
+      h: Math.round(baseDims.h * canvasScale),
+    };
+
+    const highlighting =
+      !isElem && !isDraggingTable && (isGuestOver || isGuestHovering);
+
+    const rawTranslateX = transform?.x ?? 0;
+    const rawTranslateY = transform?.y ?? 0;
+
+    let translateX = rawTranslateX;
+    let translateY = rawTranslateY;
+    if (canvasDims && canvasDims.w > 0 && canvasDims.h > 0) {
+      const halfWpx = dims.w / 2;
+      const halfHpx = dims.h / 2;
+      const centerX = (table.x / 100) * canvasDims.w;
+      const centerY = (table.y / 100) * canvasDims.h;
+      translateX = Math.max(
+        halfWpx - centerX,
+        Math.min(canvasDims.w - halfWpx - centerX, rawTranslateX),
+      );
+      translateY = Math.max(
+        halfHpx - centerY,
+        Math.min(canvasDims.h - halfHpx - centerY, rawTranslateY),
+      );
+    }
 
     const baseStyle: React.CSSProperties = {
       position: "absolute",
@@ -154,7 +196,11 @@ const TableItem: React.FC<TableItemProps> = memo(
 
     if (isElem) {
       const cfg = getElementConfig(table.type);
-      const borderColor = isSelected ? "#c9a84c" : cfg.border;
+      const borderColor = isJustDropped
+        ? "#c9a84c"
+        : isSelected
+          ? "#c9a84c"
+          : cfg.border;
       const boxShadow = isSelected
         ? `0 0 0 2px #c9a84c, 0 0 20px rgba(201,168,76,0.35)`
         : `0 4px 16px rgba(0,0,0,0.5)`;
@@ -188,13 +234,15 @@ const TableItem: React.FC<TableItemProps> = memo(
       );
     }
 
-    const borderColor = isSelected
+    const borderColor = isJustDropped
       ? "#c9a84c"
-      : highlighting
-        ? "#60a5fa"
-        : isFull
-          ? "rgba(239,68,68,0.5)"
-          : "rgba(255,255,255,0.12)";
+      : isSelected
+        ? "#c9a84c"
+        : highlighting
+          ? "#60a5fa"
+          : isFull
+            ? "rgba(239,68,68,0.5)"
+            : "rgba(255,255,255,0.12)";
 
     const background = highlighting
       ? "#1e3a5f"
@@ -237,7 +285,9 @@ const TableItem: React.FC<TableItemProps> = memo(
             </span>
           )}
           {highlighting && !isFull && (
-            <span className="text-[9px] text-[#60a5fa] mt-0.5">+ שבץ</span>
+            <span className="text-[9px] text-[#60a5fa] mt-0.5 animate-pulse">
+              ⬇ שחרר
+            </span>
           )}
         </div>
       </div>

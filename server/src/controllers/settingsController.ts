@@ -64,7 +64,7 @@ export const setRsvpLock = asyncHandler(async (req: Request, res: Response) => {
 
 export const triggerReminder30 = asyncHandler(
   async (_req: Request, res: Response) => {
-    runReminder30().catch((err) => {});
+    runReminder30().catch(() => {});
     res.status(202).json({
       success: true,
       message:
@@ -75,7 +75,7 @@ export const triggerReminder30 = asyncHandler(
 
 export const triggerDayOf = asyncHandler(
   async (_req: Request, res: Response) => {
-    runDayOfGreeting().catch((err) => {});
+    runDayOfGreeting().catch(() => {});
     res.status(202).json({
       success: true,
       message: "Day-of greeting job started in background.",

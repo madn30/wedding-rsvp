@@ -81,6 +81,11 @@ const GuestSidebar: React.FC<GuestSidebarProps> = ({
     tables.flatMap((t) => t.seatedGuests.map((g) => g._id)),
   );
 
+  const guestTableName = new Map<string, string>();
+  tables.forEach((t) =>
+    t.seatedGuests.forEach((g) => guestTableName.set(g._id, t.name)),
+  );
+
   const unseated = guests.filter((g) => !seatedIds.has(g._id));
   const seated = guests.filter((g) => seatedIds.has(g._id));
 
@@ -134,12 +139,19 @@ const GuestSidebar: React.FC<GuestSidebarProps> = ({
                   {seated.map((g) => (
                     <div
                       key={g._id}
-                      className="flex items-center gap-2.5 p-2 rounded-xl border border-white/[0.04] bg-white/[0.015] opacity-50 cursor-default select-none"
+                      className="flex items-center gap-2.5 p-2 rounded-xl border border-white/[0.04] bg-white/[0.015] opacity-60 cursor-default select-none"
                     >
                       <div className="w-8 h-8 shrink-0 rounded-full bg-[#c9a84c]/20 text-[#e8c97e] flex items-center justify-center text-[11px]">
                         {g.name[0]}
                       </div>
-                      <p className="text-xs text-white/50 truncate">{g.name}</p>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-white/60 truncate leading-tight">
+                          {g.name}
+                        </p>
+                        <p className="text-[9px] text-[#c9a84c]/60 truncate mt-0.5">
+                          🪑 {guestTableName.get(g._id)}
+                        </p>
+                      </div>
                     </div>
                   ))}
                 </div>
