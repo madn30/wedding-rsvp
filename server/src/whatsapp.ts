@@ -96,16 +96,19 @@ export const initWhatsAppClient = (): void => {
     console.info(browserUrl);
   });
 
-  client.on("authenticated", () => {});
-
-  client.on("auth_failure", () => {
-    ready = false;
-  });
-
   client.on("ready", () => {
     ready = true;
+    console.info("✅ WhatsApp Client is ready!"); // תוסיף את זה
   });
 
+  client.on("authenticated", () => {
+    console.info("📩 Authenticated successfully!"); // תוסיף את זה
+  });
+
+  client.on("auth_failure", (msg) => {
+    ready = false;
+    console.info("❌ Auth failure:", msg); // תוסיף הדפסת שגיאה
+  });
   client.on("disconnected", () => {
     ready = false;
     client = null;
