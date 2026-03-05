@@ -5,7 +5,10 @@ import {
   randomDelay,
   formatToWhatsAppId,
 } from "../whatsapp";
-import { normalizeIsraeliPhone, sendInvite } from "../services/messagingService"; // 👈 Import sendInvite
+import {
+  normalizeIsraeliPhone,
+  sendInvite,
+} from "../services/messagingService";
 import { Guest } from "../models/Guest";
 import { Event as EventModel } from "../models/Event";
 
@@ -23,7 +26,8 @@ export const sendInvitationMessage = async (
   if (!activeEvent) {
     res.status(400).json({
       success: false,
-      message: "No active event found. Please set an event to active before sending invitations.",
+      message:
+        "No active event found. Please set an event to active before sending invitations.",
     });
     return;
   }
@@ -31,12 +35,12 @@ export const sendInvitationMessage = async (
   if (!isWhatsAppReady()) {
     res.status(503).json({
       success: false,
-      message: "WhatsApp client is not ready. Please scan the QR code in the terminal.",
+      message:
+        "WhatsApp client is not ready. Please scan the QR code in the terminal.",
     });
     return;
   }
 
-  // ✨ SMART AUTO-GENERATE: If no message text was sent, but we have a guest ID, build the template!
   if (!messageContent && guestId) {
     const guest = await Guest.findById(guestId);
     if (!guest) {
@@ -57,7 +61,7 @@ export const sendInvitationMessage = async (
       guest.messageSent = true;
       guest.messageChannel = "whatsapp";
       guest.messageSentAt = new Date();
-      guest.eventId = activeEvent._id; 
+      guest.eventId = activeEvent._id;
       await guest.save();
 
       res.status(200).json({
@@ -65,18 +69,18 @@ export const sendInvitationMessage = async (
         message: `WhatsApp invitation auto-generated and sent to ${guest.name}.`,
         data: guest,
       });
-      return; // Stop execution here since we sent the message
+      return;
     } catch (err: any) {
       res.status(500).json({ success: false, message: err.message });
       return;
     }
   }
 
-  // ─── ORIGINAL LOGIC FOR CUSTOM MESSAGES ───
   if (!phoneNumber || !messageContent) {
     res.status(400).json({
       success: false,
-      message: "phoneNumber and messageContent are required for custom messages.",
+      message:
+        "phoneNumber and messageContent are required for custom messages.",
     });
     return;
   }

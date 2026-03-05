@@ -63,7 +63,12 @@ export const createGuest = asyncHandler(
 
     const activeEvent = await EventModel.findOne({ isActive: true });
     if (!activeEvent) {
-      return next(new AppError("No active event found. Set an event to active first.", 400));
+      return next(
+        new AppError(
+          "No active event found. Set an event to active first.",
+          400,
+        ),
+      );
     }
 
     let normalizedPhone: string;
@@ -73,23 +78,22 @@ export const createGuest = asyncHandler(
       return next(new AppError("Invalid Israeli phone number format.", 400));
     }
 
-    // 💥 1. THE DATABASE FIX: Tell MongoDB to destroy the old rule
     try {
       await Guest.collection.dropIndex("phone_1");
-      console.log("✅ Successfully destroyed the old phone_1 index!");
-    } catch (err) {
-      // If it fails, it usually means it's already deleted, which is fine!
-      console.log("ℹ️ Index phone_1 already dropped or not found.");
-    }
+    } catch {}
 
-    // 2. Resume normal logic...
     const existing = await Guest.findOne({
       phone: normalizedPhone,
       eventId: activeEvent._id,
     });
-    
+
     if (existing) {
-      return next(new AppError("A guest with this phone number already exists for this wedding.", 409));
+      return next(
+        new AppError(
+          "A guest with this phone number already exists for this wedding.",
+          409,
+        ),
+      );
     }
 
     const token = generateToken();

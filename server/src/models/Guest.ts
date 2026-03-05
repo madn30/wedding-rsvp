@@ -10,7 +10,7 @@ export type FoodPreference =
   | null;
 
 export interface IGuest extends Document {
-  eventId: Types.ObjectId; // 👈 Added: Links guest to the specific event
+  eventId: Types.ObjectId;
   name: string;
   phone: string;
   token: string;
@@ -33,7 +33,7 @@ const GuestSchema = new Schema<IGuest>(
     eventId: {
       type: Schema.Types.ObjectId,
       ref: "Event",
-      required: [true, "Guest must belong to an event"], // 👈 Added: Forces Mongoose to save the ID
+      required: [true, "Guest must belong to an event"],
     },
     name: {
       type: String,
@@ -45,7 +45,7 @@ const GuestSchema = new Schema<IGuest>(
     phone: {
       type: String,
       required: [true, "Phone number is required"],
-      // ⚠️ Removed global unique: true from here so guests can be in multiple weddings
+
       validate: {
         validator: (v: string) => /^\+9725\d{8}$/.test(v),
         message: "Phone must be a valid Israeli number in +972 format",
@@ -109,12 +109,11 @@ const GuestSchema = new Schema<IGuest>(
     timestamps: true,
     toJSON: { virtuals: true },
     toObject: { virtuals: true },
-  }
+  },
 );
 
-// 👇 New Indexes for Multi-Event Architecture
-GuestSchema.index({ eventId: 1 }); // Makes dashboard loading fast
-GuestSchema.index({ eventId: 1, phone: 1 }, { unique: true }); // A phone number can only exist once PER wedding
+GuestSchema.index({ eventId: 1 });
+GuestSchema.index({ eventId: 1, phone: 1 }, { unique: true });
 
 GuestSchema.index({ response: 1 });
 GuestSchema.index({ createdAt: -1 });

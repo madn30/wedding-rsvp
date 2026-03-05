@@ -7,6 +7,7 @@ interface CalendarEvent {
   startTime?: string;
 }
 import { Client, LocalAuth } from "whatsapp-web.js";
+import path from "path";
 
 const qrcode = require("qrcode-terminal") as {
   generate: (text: string, opts?: { small?: boolean }) => void;
@@ -73,7 +74,9 @@ export const initWhatsAppClient = (): void => {
   if (client) return;
 
   client = new Client({
-    authStrategy: new LocalAuth({ dataPath: ".wwebjs_auth" }),
+    authStrategy: new LocalAuth({
+      dataPath: path.join(__dirname, "../.wwebjs_auth"),
+    }),
     puppeteer: {
       executablePath: process.env.CHROME_PATH || undefined,
       headless: true,
