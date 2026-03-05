@@ -1,4 +1,5 @@
 import { sendWhatsAppMessage, randomDelay } from "../whatsapp";
+import { IEvent } from "../models/Event";
 
 export type MessageChannel = "whatsapp";
 
@@ -6,11 +7,20 @@ export interface SendInviteOptions {
   to: string;
   name: string;
   rsvpLink: string;
+  event: IEvent;
 }
 
-const buildInviteMessage = (name: string, rsvpLink: string): string => {
-  const coupleNames = process.env.COUPLE_NAMES || "החתן והכלה";
-  const weddingDate = process.env.WEDDING_DATE || "";
+const buildInviteMessage = (
+  name: string,
+  rsvpLink: string,
+  event: IEvent,
+): string => {
+  const coupleNames =
+    event.groomName && event.brideName
+      ? `${event.groomName} & ${event.brideName}`
+      : event.name;
+
+  const weddingDate = event.date;
   const dateText = weddingDate ? ` בתאריך ${weddingDate}` : "";
 
   return (
@@ -20,8 +30,8 @@ const buildInviteMessage = (name: string, rsvpLink: string): string => {
 };
 
 export const sendInvite = async (options: SendInviteOptions): Promise<void> => {
-  const { to, name, rsvpLink } = options;
-  const message = buildInviteMessage(name, rsvpLink);
+  const { to, name, rsvpLink, event } = options;
+  const message = buildInviteMessage(name, rsvpLink, event);
   await randomDelay();
   await sendWhatsAppMessage(to, message);
 };

@@ -4,77 +4,90 @@ import {
   sendWhatsAppMessage,
   randomDelay,
   formatToWhatsAppId,
-  buildCalendarLink,
 } from "../whatsapp";
-import { normalizeIsraeliPhone } from "../services/messagingService";
+import { normalizeIsraeliPhone, sendInvite } from "../services/messagingService"; // 👈 Import sendInvite
 import { Guest } from "../models/Guest";
-import { AppSettings } from "../models/AppSettings";
 import { Event as EventModel } from "../models/Event";
-
-function interpolate(
-  template: string,
-  vars: Record<string, string | undefined>,
-): string {
-  return template.replace(
-    /\{\{(\w+)\}\}/g,
-    (_, key) => vars[key] ?? `{{${key}}}`,
-  );
-}
 
 export const sendInvitationMessage = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
-  const { guestId } = req.body as { guestId?: string };
+  const { phoneNumber, messageContent, guestId } = req.body as {
+    phoneNumber?: string;
+    messageContent?: string;
+    guestId?: string;
+  };
 
-  if (!guestId) {
-    res.status(400).json({ success: false, message: "guestId is required." });
+  const activeEvent = await EventModel.findOne({ isActive: true });
+  if (!activeEvent) {
+    res.status(400).json({
+      success: false,
+      message: "No active event found. Please set an event to active before sending invitations.",
+    });
     return;
   }
 
   if (!isWhatsAppReady()) {
-    const statusMessage =
-      process.env.WHATSAPP_ENABLED === "true"
-        ? "WhatsApp is starting or needs QR scan. Check server logs."
-        : "WhatsApp is disabled in .env settings.";
-
-    res.status(503).json({ success: false, message: statusMessage });
+    res.status(503).json({
+      success: false,
+      message: "WhatsApp client is not ready. Please scan the QR code in the terminal.",
+    });
     return;
   }
 
-  const guest = await Guest.findById(guestId);
-  if (!guest) {
-    res.status(404).json({ success: false, message: "Guest not found." });
-    return;
+  // ✨ SMART AUTO-GENERATE: If no message text was sent, but we have a guest ID, build the template!
+  if (!messageContent && guestId) {
+    const guest = await Guest.findById(guestId);
+    if (!guest) {
+      res.status(404).json({ success: false, message: "Guest not found." });
+      return;
+    }
+
+    const rsvpLink = `${process.env.RSVP_BASE_URL}/rsvp/${guest.token}`;
+
+    try {
+      await sendInvite({
+        to: guest.phone,
+        name: guest.name,
+        rsvpLink,
+        event: activeEvent,
+      });
+
+      guest.messageSent = true;
+      guest.messageChannel = "whatsapp";
+      guest.messageSentAt = new Date();
+      guest.eventId = activeEvent._id; 
+      await guest.save();
+
+      res.status(200).json({
+        success: true,
+        message: `WhatsApp invitation auto-generated and sent to ${guest.name}.`,
+        data: guest,
+      });
+      return; // Stop execution here since we sent the message
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err.message });
+      return;
+    }
   }
 
-  const activeEvent = await EventModel.findOne({ isActive: true });
-
-  const settings = await AppSettings.getSingleton();
-
-  const baseUrl = req.headers.origin || `${req.protocol}://${req.get("host")}`;
-  const rsvpLink = `${baseUrl}/rsvp/${guest.token}`;
-  const coupleNames =
-    activeEvent?.groomName && activeEvent?.brideName
-      ? `${activeEvent.brideName} ו${activeEvent.groomName}`
-      : activeEvent?.name || "החתן והכלה";
-
-  const messageContent = interpolate(settings.templates.invitation, {
-    guest_name: guest.name,
-    couple_names: coupleNames,
-    wedding_date: activeEvent?.date || "טרם נקבע תאריך",
-    venue: activeEvent?.location || "טרם נקבע מיקום",
-    rsvp_link: rsvpLink,
-    calendar_link: buildCalendarLink(activeEvent),
-  });
+  // ─── ORIGINAL LOGIC FOR CUSTOM MESSAGES ───
+  if (!phoneNumber || !messageContent) {
+    res.status(400).json({
+      success: false,
+      message: "phoneNumber and messageContent are required for custom messages.",
+    });
+    return;
+  }
 
   let normalizedPhone: string;
   try {
-    normalizedPhone = normalizeIsraeliPhone(guest.phone);
+    normalizedPhone = normalizeIsraeliPhone(phoneNumber);
   } catch {
     res.status(400).json({
       success: false,
-      message: `Invalid phone number: "${guest.phone}". Expected format: 0501234567`,
+      message: `Invalid phone number: "${phoneNumber}".`,
     });
     return;
   }
@@ -84,24 +97,29 @@ export const sendInvitationMessage = async (
   try {
     await sendWhatsAppMessage(normalizedPhone, messageContent);
 
-    await Guest.findByIdAndUpdate(guestId, {
-      $set: {
-        messageSent: true,
-        messageChannel: "whatsapp",
-        messageSentAt: new Date(),
-      },
-    });
+    if (guestId) {
+      await Guest.findByIdAndUpdate(guestId, {
+        $set: {
+          eventId: activeEvent._id,
+          messageSent: true,
+          messageChannel: "whatsapp",
+          messageSentAt: new Date(),
+        },
+      });
+    }
 
     res.status(200).json({
       success: true,
-      message: `WhatsApp message sent to ${normalizedPhone}.`,
-      data: { whatsappId: formatToWhatsAppId(normalizedPhone) },
+      message: `WhatsApp custom message sent for ${activeEvent.name}.`,
+      data: {
+        whatsappId: formatToWhatsAppId(normalizedPhone),
+        eventName: activeEvent.name,
+      },
     });
   } catch (err: any) {
     const status = err.message?.includes("not registered on WhatsApp")
       ? 422
       : 500;
-
     res.status(status).json({
       success: false,
       message: err.message || "Failed to send WhatsApp message.",

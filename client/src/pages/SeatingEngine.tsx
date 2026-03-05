@@ -357,18 +357,6 @@ const SeatingEngine: React.FC = () => {
                 </p>
               </div>
             )}
-            <button
-              onClick={() => setShowAddElementPrompt(true)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-purple-900/30 border border-purple-500/30 rounded-lg text-xs font-semibold text-purple-300 hover:bg-purple-900/50 transition"
-            >
-              <Layers size={13} /> הוסף אלמנט
-            </button>
-            <button
-              onClick={() => setShowAddPrompt(true)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-xs font-semibold hover:bg-white/10 transition"
-            >
-              <Plus size={13} /> הוסף שולחן
-            </button>
           </div>
         </div>
 
