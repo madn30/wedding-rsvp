@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { RotateCw, X, Trash2 } from 'lucide-react';
-import { SeatingTable } from '../../../store/seatingStore';
-import { TABLE_SHAPES, ELEMENTS, ELEMENT_TYPES_SET } from '../constants';
+import React, { useState, useEffect } from "react";
+import { RotateCw, X, Trash2 } from "lucide-react";
+import { SeatingTable } from "../../../store/seatingStore";
+import { TABLE_SHAPES, ELEMENTS, ELEMENT_TYPES_SET } from "../constants";
 
 interface TableConfigModalProps {
   table: SeatingTable;
@@ -32,18 +32,18 @@ const TableConfigModal: React.FC<TableConfigModalProps> = ({
   return (
     <div
       className={`fixed inset-0 z-[100] flex items-center justify-center p-4 transition-colors duration-200 ${
-        sliding ? 'bg-black/5' : 'bg-black/65 backdrop-blur-sm'
+        sliding ? "bg-black/5" : "bg-black/65 backdrop-blur-sm"
       }`}
     >
       <div
         className={`bg-[#0d1b2a] border border-[#c9a84c]/30 rounded-2xl w-full max-w-md shadow-2xl flex flex-col max-h-[90vh] transition-opacity duration-200 ${
-          sliding ? 'opacity-25' : 'opacity-100'
+          sliding ? "opacity-25" : "opacity-100"
         }`}
       >
-        {/* Header */}
+        {}
         <div className="flex justify-between items-center p-4 border-b border-white/10 bg-white/5 shrink-0">
           <h2 className="text-base font-serif text-[#e8c97e]">
-            {isElem ? 'הגדרות אלמנט' : 'הגדרות שולחן'}
+            {isElem ? "הגדרות אלמנט" : "הגדרות שולחן"}
           </h2>
           <button
             onClick={onClose}
@@ -53,12 +53,12 @@ const TableConfigModal: React.FC<TableConfigModalProps> = ({
           </button>
         </div>
 
-        {/* Body */}
+        {}
         <div className="p-4 overflow-y-auto space-y-4 flex-1">
-          {/* Name */}
+          {}
           <div>
             <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-1">
-              {isElem ? 'שם אלמנט' : 'שם שולחן'}
+              {isElem ? "שם אלמנט" : "שם שולחן"}
             </label>
             <input
               type="text"
@@ -68,8 +68,10 @@ const TableConfigModal: React.FC<TableConfigModalProps> = ({
             />
           </div>
 
-          {/* Capacity (tables only) + Size */}
-          <div className={`grid gap-3 ${isElem ? 'grid-cols-1' : 'grid-cols-2'}`}>
+          {}
+          <div
+            className={`grid gap-3 ${isElem ? "grid-cols-1" : "grid-cols-2"}`}
+          >
             {!isElem && (
               <div>
                 <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-1">
@@ -111,7 +113,9 @@ const TableConfigModal: React.FC<TableConfigModalProps> = ({
                 }}
                 onTouchStart={() => setSliding(true)}
                 onTouchEnd={(e) => {
-                  const val = parseFloat((e.currentTarget as HTMLInputElement).value);
+                  const val = parseFloat(
+                    (e.currentTarget as HTMLInputElement).value,
+                  );
                   setLocalSize(val);
                   onUpdate({ size: val });
                   setSliding(false);
@@ -121,7 +125,7 @@ const TableConfigModal: React.FC<TableConfigModalProps> = ({
             </div>
           </div>
 
-          {/* Rotation */}
+          {}
           <div>
             <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-1 flex items-center gap-1">
               <RotateCw size={11} /> זווית (מעלות)
@@ -147,13 +151,16 @@ const TableConfigModal: React.FC<TableConfigModalProps> = ({
                 }}
                 onTouchStart={() => setSliding(true)}
                 onTouchEnd={(e) => {
-                  const val = parseInt((e.currentTarget as HTMLInputElement).value);
+                  const val = parseInt(
+                    (e.currentTarget as HTMLInputElement).value,
+                  );
                   setLocalRotation(val);
                   onUpdate({ rotation: val });
                   setSliding(false);
                 }}
                 className="flex-1 accent-[#c9a84c]"
               />
+
               <span
                 className="w-12 text-center bg-white/5 border border-white/10 rounded-lg py-1 text-[#e8c97e] font-bold text-xs"
                 dir="ltr"
@@ -163,10 +170,10 @@ const TableConfigModal: React.FC<TableConfigModalProps> = ({
             </div>
           </div>
 
-          {/* Shape picker */}
+          {}
           <div>
             <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-2">
-              {isElem ? 'סוג אלמנט' : 'צורה'}
+              {isElem ? "סוג אלמנט" : "צורה"}
             </label>
             {!isElem ? (
               <div className="grid grid-cols-4 gap-2">
@@ -176,8 +183,8 @@ const TableConfigModal: React.FC<TableConfigModalProps> = ({
                     onClick={() => onUpdate({ type: s.id })}
                     className={`flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${
                       table.type === s.id
-                        ? 'bg-[#c9a84c]/20 border-[#c9a84c] text-[#e8c97e]'
-                        : 'bg-white/5 border-white/10 text-white/35 hover:text-white/60'
+                        ? "bg-[#c9a84c]/20 border-[#c9a84c] text-[#e8c97e]"
+                        : "bg-white/5 border-white/10 text-white/35 hover:text-white/60"
                     }`}
                   >
                     {s.preview}
@@ -193,8 +200,8 @@ const TableConfigModal: React.FC<TableConfigModalProps> = ({
                     onClick={() => onUpdate({ type: el.type })}
                     className={`flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${
                       table.type === el.type
-                        ? 'bg-[#c9a84c]/20 border-[#c9a84c] text-[#e8c97e]'
-                        : 'bg-white/5 border-white/10 text-white/35 hover:text-white/60'
+                        ? "bg-[#c9a84c]/20 border-[#c9a84c] text-[#e8c97e]"
+                        : "bg-white/5 border-white/10 text-white/35 hover:text-white/60"
                     }`}
                   >
                     <span className="text-lg">{el.emoji}</span>
@@ -206,7 +213,7 @@ const TableConfigModal: React.FC<TableConfigModalProps> = ({
           </div>
         </div>
 
-        {/* Footer */}
+        {}
         <div className="flex justify-between items-center p-4 border-t border-white/10 bg-black/20 shrink-0">
           <button
             onClick={onDelete}

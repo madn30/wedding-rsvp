@@ -7,9 +7,21 @@
   animation: spin 0.65s linear infinite;
   flex-shrink: 0;
 }
-.spinnerSm { width: 16px; height: 16px; border-width: 2px; }
-.spinnerMd { width: 32px; height: 32px; border-width: 3px; }
-.spinnerLg { width: 48px; height: 48px; border-width: 4px; }
+.spinnerSm {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+.spinnerMd {
+  width: 32px;
+  height: 32px;
+  border-width: 3px;
+}
+.spinnerLg {
+  width: 48px;
+  height: 48px;
+  border-width: 4px;
+}
 
 /* ── FullPageLoader ──────────────────────────────────────── */
 .fullPageLoader {
@@ -17,7 +29,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--clr-primary-subtle) 0%, #fce7f3 60%, var(--clr-gold-subtle) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--clr-primary-subtle) 0%,
+    #fce7f3 60%,
+    var(--clr-gold-subtle) 100%
+  );
 }
 
 .loaderContent {
@@ -57,7 +74,9 @@
   flex-direction: column;
   gap: var(--sp-2);
   border-right: 4px solid var(--clr-border);
-  transition: transform var(--ease-base), box-shadow var(--ease-base);
+  transition:
+    transform var(--ease-base),
+    box-shadow var(--ease-base);
 }
 
 .statCard:hover {
@@ -72,7 +91,10 @@
   gap: var(--sp-2);
 }
 
-.statCardIcon { font-size: 1.5rem; line-height: 1; }
+.statCardIcon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
 
 .statCardValue {
   font-size: var(--text-3xl);
@@ -107,10 +129,22 @@
   line-height: 1.5;
 }
 
-.badgeYes     { background: var(--clr-success-bg); color: var(--clr-success); }
-.badgeNo      { background: var(--clr-error-bg);   color: var(--clr-error); }
-.badgeMaybe   { background: var(--clr-warning-bg); color: var(--clr-warning); }
-.badgePending { background: var(--clr-surface-subtle); color: var(--clr-text-secondary); }
+.badgeYes {
+  background: var(--clr-success-bg);
+  color: var(--clr-success);
+}
+.badgeNo {
+  background: var(--clr-error-bg);
+  color: var(--clr-error);
+}
+.badgeMaybe {
+  background: var(--clr-warning-bg);
+  color: var(--clr-warning);
+}
+.badgePending {
+  background: var(--clr-surface-subtle);
+  color: var(--clr-text-secondary);
+}
 
 /* ── Modal ───────────────────────────────────────────────── */
 .overlay {
@@ -161,7 +195,9 @@
   color: var(--clr-text-muted);
   font-size: var(--text-lg);
   flex-shrink: 0;
-  transition: background var(--ease-fast), color var(--ease-fast);
+  transition:
+    background var(--ease-fast),
+    color var(--ease-fast);
 }
 
 .modalClose:hover {

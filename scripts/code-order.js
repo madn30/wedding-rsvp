@@ -1,11 +1,3 @@
-import { Home } from "lucide-react";
-import { User } from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
-import { useRef } from "react";
-import { useEffect } from "react";
-import { useState } from "react";
-import React from "react";
 const fs = require("fs");
 const path = require("path");
 const { execSync } = require("child_process");
@@ -16,8 +8,11 @@ const t = require("@babel/types");
 
 const EXTS = new Set([".js", ".jsx", ".ts", ".tsx"]);
 const ROOT = process.cwd();
-const PRETTIER = `${ROOT}/node_modules/.bin/prettier`;
-const ESLINT = `${ROOT}/node_modules/.bin/eslint`;
+const SCRIPT_NAME = path.basename(__filename);
+
+// Use npx directly to avoid path issues with local node_modules
+const PRETTIER = `npx prettier`;
+const ESLINT = `npx eslint`;
 
 const AUTO_IMPORTS = {
   React: { module: "react", isDefault: true },
@@ -49,6 +44,8 @@ function parse(code, file) {
 
 function scanComponents(dir, baseAlias = "@/") {
   const map = {};
+  if (!fs.existsSync(dir)) return map;
+
   for (const file of fs.readdirSync(dir)) {
     const full = path.join(dir, file);
     const stat = fs.statSync(full);
@@ -118,21 +115,6 @@ function scanComponents(dir, baseAlias = "@/") {
               }
             });
           }
-        } else if (p.node.specifiers) {
-          p.node.specifiers.forEach((s) => {
-            if (t.isExportSpecifier(s)) {
-              const relative = path.relative(path.join(ROOT, "src"), full);
-              const importPath = path.posix
-                .join(baseAlias.slice(0, -1), relative)
-                .replace(/\\/g, "/")
-                .replace(/\.(js|jsx|ts|tsx)$/, "");
-              map[s.exported.name] = {
-                path: importPath,
-                isDefault: false,
-                definedIn: full,
-              };
-            }
-          });
         }
       },
     });
@@ -219,17 +201,6 @@ function removeUnusedBindings(ast) {
       const binding = p.scope.getBinding(id.name);
       if (t.isIdentifier(id) && binding && !binding.referenced) p.remove();
     },
-    FunctionDeclaration(p) {
-      const name = p.node.id?.name;
-      const binding = name ? p.scope.getBinding(name) : null;
-      if (
-        name &&
-        binding &&
-        !binding.referenced &&
-        !p.parentPath.isExportNamedDeclaration()
-      )
-        p.remove();
-    },
   });
 }
 
@@ -240,20 +211,11 @@ function cleanupStatements(ast) {
         t.isMemberExpression(p.node.callee) &&
         t.isIdentifier(p.node.callee.object, { name: "console" })
       ) {
-        if (p.parentPath.isExpressionStatement()) p.parentPath.remove();
-        else p.remove();
+        p.remove();
       }
     },
     DebuggerStatement(p) {
       p.remove();
-    },
-    TryStatement(p) {
-      const blockEmpty = p.node.block.body.length === 0;
-      const handlerEmpty =
-        !p.node.handler || p.node.handler.body.body.length === 0;
-      const finalizerEmpty =
-        !p.node.finalizer || p.node.finalizer.body.length === 0;
-      if (blockEmpty && handlerEmpty && finalizerEmpty) p.remove();
     },
   });
 }
@@ -261,20 +223,13 @@ function cleanupStatements(ast) {
 function transform(code, components, file) {
   const ast = parse(code, file);
   if (!ast) return code;
-
   const used = collectUsed(ast);
   const imported = collectImports(ast);
-
   removeUnusedImports(ast, used);
   removeUnusedBindings(ast);
   cleanupStatements(ast);
   addMissingImports(ast, used, imported, components, file);
-
-  return generate(ast, {
-    comments: false,
-    retainLines: true,
-    jsescOption: { minimal: true },
-  }).code;
+  return generate(ast, { comments: false, retainLines: true }).code;
 }
 
 function processFile(file, components) {
@@ -282,29 +237,38 @@ function processFile(file, components) {
     const raw = fs.readFileSync(file, "utf8");
     const out = transform(raw, components, file);
     fs.writeFileSync(file, out);
-    run(`${PRETTIER} --write "${file}"`);
   } catch (err) {}
 }
 
 function walk(dir, components) {
   for (const file of fs.readdirSync(dir)) {
     const full = path.join(dir, file);
+    if (
+      file === SCRIPT_NAME ||
+      ["node_modules", ".next", "dist", "build"].includes(file) ||
+      file.startsWith(".")
+    )
+      continue;
+
     const stat = fs.statSync(full);
     if (stat.isDirectory()) {
-      if (
-        ["node_modules", ".next", "dist", "build"].includes(file) ||
-        file.startsWith(".")
-      )
-        continue;
       walk(full, components);
-      continue;
+    } else if (EXTS.has(path.extname(full))) {
+      processFile(full, components);
     }
-    if (EXTS.has(path.extname(full))) processFile(full, components);
   }
 }
 
-const components = scanComponents(path.join(ROOT, "src/components"));
+// --- START ---
+console.log("🚀 Starting cleanup...");
+const componentsDir = path.join(ROOT, "src/components");
+const components = fs.existsSync(componentsDir)
+  ? scanComponents(componentsDir)
+  : {};
 
 walk(ROOT, components);
+
+console.log("✨ Formatting files...");
 run(`${ESLINT} . --ext .js,.jsx,.ts,.tsx --fix`);
 run(`${PRETTIER} --write .`);
+console.log("✅ Done!");

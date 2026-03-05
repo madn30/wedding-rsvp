@@ -1,30 +1,41 @@
-import React, { forwardRef } from 'react';
-import { useDroppable } from '@dnd-kit/core';
-import TableItem from './TableItem';
-import { SeatingTable } from '../../store/seatingStore';
+import React, { forwardRef } from "react";
+import { useDroppable } from "@dnd-kit/core";
+import TableItem from "./TableItem";
+import { SeatingTable } from "../../store/seatingStore";
 
 interface CanvasProps {
   tables: SeatingTable[];
   activeTableId: string | null;
-  /** ID of the table a guest is currently hovering over */
+
   hoveredTableId: string | null;
   isLoading: boolean;
   onSelectTable: (id: string | null) => void;
-  /** Called when a table is double-clicked — opens the config modal */
+
   onDoubleClickTable?: () => void;
 }
 
 const Canvas = forwardRef<HTMLDivElement, CanvasProps>(
-  ({ tables, activeTableId, hoveredTableId, isLoading, onSelectTable, onDoubleClickTable }, ref) => {
+  (
+    {
+      tables,
+      activeTableId,
+      hoveredTableId,
+      isLoading,
+      onSelectTable,
+      onDoubleClickTable,
+    },
+    ref,
+  ) => {
     const { setNodeRef: setDropRef } = useDroppable({
-      id: 'canvas',
-      data: { type: 'canvas' },
+      id: "canvas",
+      data: { type: "canvas" },
     });
 
     const mergedRef = (node: HTMLDivElement | null) => {
       setDropRef(node);
-      if (typeof ref === 'function') ref(node);
-      else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+      if (typeof ref === "function") ref(node);
+      else if (ref)
+        (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
     };
 
     return (
@@ -32,13 +43,14 @@ const Canvas = forwardRef<HTMLDivElement, CanvasProps>(
         ref={mergedRef}
         className="relative w-full h-full rounded-2xl shadow-2xl select-none"
         style={{
-          background: 'radial-gradient(ellipse at center, #243b5540 0%, #0d1b2a 100%)',
+          background:
+            "radial-gradient(ellipse at center, #243b5540 0%, #0d1b2a 100%)",
           backgroundImage: `
             radial-gradient(ellipse at center, #243b5540 0%, #0d1b2a 100%),
             repeating-linear-gradient(0deg, transparent, transparent 29px, rgba(255,255,255,0.022) 30px),
             repeating-linear-gradient(90deg, transparent, transparent 29px, rgba(255,255,255,0.022) 30px)
           `,
-          border: '1px solid rgba(201,168,76,0.12)',
+          border: "1px solid rgba(201,168,76,0.12)",
         }}
         onClick={() => onSelectTable(null)}
       >
@@ -71,8 +83,8 @@ const Canvas = forwardRef<HTMLDivElement, CanvasProps>(
         ))}
       </div>
     );
-  }
+  },
 );
 
-Canvas.displayName = 'Canvas';
+Canvas.displayName = "Canvas";
 export default Canvas;

@@ -1,14 +1,13 @@
-import cron from 'node-cron';
-import { Guest } from '../models/Guest';
-import { AppSettings } from '../models/AppSettings';
-import { sendWhatsAppMessage, isWhatsAppReady, randomDelay } from '../whatsapp';
+import cron from "node-cron";
+import { Guest } from "../models/Guest";
+import { AppSettings } from "../models/AppSettings";
+import { sendWhatsAppMessage, isWhatsAppReady, randomDelay } from "../whatsapp";
 
-const WEDDING_DATE = new Date('2026-02-10T00:00:00.000+02:00');
+const WEDDING_DATE = new Date("2026-02-10T00:00:00.000+02:00");
 
 const WAZE_BASE =
-  'https://www.waze.com/ul?q=' +
-  encodeURIComponent(process.env.WEDDING_VENUE || 'כתובת האירוע');
-
+  "https://www.waze.com/ul?q=" +
+  encodeURIComponent(process.env.WEDDING_VENUE || "כתובת האירוע");
 
 interface TemplateVars {
   guest_name: string;
@@ -22,46 +21,42 @@ interface TemplateVars {
 
 function interpolate(template: string, vars: TemplateVars): string {
   return template.replace(/\{\{(\w+)\}\}/g, (_, key) => {
-    return (vars as unknown as Record<string, string | undefined>)[key] ?? `{{${key}}}`;
+    return (
+      (vars as unknown as Record<string, string | undefined>)[key] ??
+      `{{${key}}}`
+    );
   });
 }
 
-// ── Google Calendar link helper ───────────────────────────────────────────────
-
 function buildCalendarLink(): string {
-  const title = encodeURIComponent(`חתונת ${process.env.COUPLE_NAMES || 'החתן והכלה'}`);
-  const venue = encodeURIComponent(process.env.WEDDING_VENUE || '');
-  // Feb 10 2026 — all-day event
+  const title = encodeURIComponent(
+    `חתונת ${process.env.COUPLE_NAMES || "החתן והכלה"}`,
+  );
+  const venue = encodeURIComponent(process.env.WEDDING_VENUE || "");
+
   return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=20260210/20260211&location=${venue}`;
 }
-
-// ── Send helper ───────────────────────────────────────────────────────────────
 
 async function sendToGuest(phone: string, message: string): Promise<void> {
   await randomDelay();
   await sendWhatsAppMessage(phone, message);
 }
 
-// ── Job implementations ───────────────────────────────────────────────────────
-
 async function runReminder30(): Promise<void> {
   if (!isWhatsAppReady()) {
-    console.warn('[Scheduler] 30-day reminder skipped — WhatsApp not ready.');
     return;
   }
 
   const settings = await AppSettings.getSingleton();
   const { reminder30Pending, reminder30Attending } = settings.templates;
 
-  const coupleNames = process.env.COUPLE_NAMES || 'החתן והכלה';
-  const weddingDate = process.env.WEDDING_DATE || '10.02.2026';
-  const venue = process.env.WEDDING_VENUE || '';
-  const baseUrl = process.env.RSVP_BASE_URL || '';
+  const coupleNames = process.env.COUPLE_NAMES || "החתן והכלה";
+  const weddingDate = process.env.WEDDING_DATE || "10.02.2026";
+  const venue = process.env.WEDDING_VENUE || "";
+  const baseUrl = process.env.RSVP_BASE_URL || "";
   const calendarLink = buildCalendarLink();
 
-  // Pending guests
   const pendingGuests = await Guest.find({ response: null });
-  console.log(`[Scheduler] 30-day reminder: ${pendingGuests.length} pending guests`);
 
   for (const guest of pendingGuests) {
     try {
@@ -75,15 +70,10 @@ async function runReminder30(): Promise<void> {
         calendar_link: calendarLink,
       });
       await sendToGuest(guest.phone, message);
-      console.log(`[Scheduler] Sent 30-day pending reminder to ${guest.name}`);
-    } catch (err) {
-      console.error(`[Scheduler] Failed for ${guest.name}:`, err);
-    }
+    } catch (err) {}
   }
 
-  // Attending guests
-  const attendingGuests = await Guest.find({ response: 'yes' });
-  console.log(`[Scheduler] 30-day reminder: ${attendingGuests.length} attending guests`);
+  const attendingGuests = await Guest.find({ response: "yes" });
 
   for (const guest of attendingGuests) {
     try {
@@ -97,28 +87,23 @@ async function runReminder30(): Promise<void> {
         calendar_link: calendarLink,
       });
       await sendToGuest(guest.phone, message);
-      console.log(`[Scheduler] Sent 30-day attending reminder to ${guest.name}`);
-    } catch (err) {
-      console.error(`[Scheduler] Failed for ${guest.name}:`, err);
-    }
+    } catch (err) {}
   }
 }
 
 async function runDayOfGreeting(): Promise<void> {
   if (!isWhatsAppReady()) {
-    console.warn('[Scheduler] Day-of greeting skipped — WhatsApp not ready.');
     return;
   }
 
   const settings = await AppSettings.getSingleton();
   const { dayOf } = settings.templates;
 
-  const coupleNames = process.env.COUPLE_NAMES || 'החתן והכלה';
-  const weddingDate = process.env.WEDDING_DATE || '10.02.2026';
-  const venue = process.env.WEDDING_VENUE || '';
+  const coupleNames = process.env.COUPLE_NAMES || "החתן והכלה";
+  const weddingDate = process.env.WEDDING_DATE || "10.02.2026";
+  const venue = process.env.WEDDING_VENUE || "";
 
-  const attendingGuests = await Guest.find({ response: 'yes' });
-  console.log(`[Scheduler] Day-of greeting: ${attendingGuests.length} attending guests`);
+  const attendingGuests = await Guest.find({ response: "yes" });
 
   for (const guest of attendingGuests) {
     try {
@@ -127,60 +112,38 @@ async function runDayOfGreeting(): Promise<void> {
         couple_names: coupleNames,
         wedding_date: weddingDate,
         venue,
-        rsvp_link: `${process.env.RSVP_BASE_URL || ''}/rsvp/${guest.token}`,
+        rsvp_link: `${process.env.RSVP_BASE_URL || ""}/rsvp/${guest.token}`,
         waze_link: WAZE_BASE,
       });
       await sendToGuest(guest.phone, message);
-      console.log(`[Scheduler] Sent day-of greeting to ${guest.name}`);
-    } catch (err) {
-      console.error(`[Scheduler] Failed for ${guest.name}:`, err);
-    }
+    } catch (err) {}
   }
 }
 
 async function runDailyLockCheck(): Promise<void> {
   const now = new Date();
-  if (now < WEDDING_DATE) return; // not yet
+  if (now < WEDDING_DATE) return;
 
   const settings = await AppSettings.getSingleton();
-  if (settings.rsvpLocked) return; // already locked
+  if (settings.rsvpLocked) return;
 
   settings.rsvpLocked = true;
   settings.lockedAt = now;
   await settings.save();
-  console.log('[Scheduler] RSVP auto-locked: wedding date has passed.');
 }
-
-// ── Scheduler init ────────────────────────────────────────────────────────────
 
 export function initScheduler(): void {
-  // 30-day reminder — Jan 11 2026 at 09:00 (Israeli time, UTC+2)
-  // cron: minute hour day month weekday
-  cron.schedule('0 7 11 1 *', () => {
-    console.log('[Scheduler] Running 30-day reminder job...');
-    runReminder30().catch((err) =>
-      console.error('[Scheduler] 30-day reminder error:', err)
-    );
+  cron.schedule("0 7 11 1 *", () => {
+    runReminder30().catch((err) => {});
   });
 
-  // Day-of greeting — Feb 10 2026 at 09:00 (UTC+2 = 07:00 UTC)
-  cron.schedule('0 7 10 2 *', () => {
-    console.log('[Scheduler] Running day-of greeting job...');
-    runDayOfGreeting().catch((err) =>
-      console.error('[Scheduler] Day-of greeting error:', err)
-    );
+  cron.schedule("0 7 10 2 *", () => {
+    runDayOfGreeting().catch((err) => {});
   });
 
-  // Daily auto-lock check at 00:01
-  cron.schedule('1 0 * * *', () => {
-    runDailyLockCheck().catch((err) =>
-      console.error('[Scheduler] Lock check error:', err)
-    );
+  cron.schedule("1 0 * * *", () => {
+    runDailyLockCheck().catch((err) => {});
   });
-
-  console.log('[Scheduler] ✅ Cron jobs registered: 30-day reminder, day-of greeting, auto-lock.');
 }
-
-// ── Manual trigger exports (for admin API) ────────────────────────────────────
 
 export { runReminder30, runDayOfGreeting };
