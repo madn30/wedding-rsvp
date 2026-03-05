@@ -93,7 +93,7 @@ const start = async () => {
     initScheduler();
 
     server = app.listen(PORT, () => {
-      console.error(`Server running on port ${PORT}`);
+      console.info(`Server running on port ${PORT}`);
     });
   } catch {
     process.exit(1);
@@ -110,6 +110,8 @@ function shutdown() {
   }
 }
 
-start();
+if (require.main === module) {
+  start();
+}
 
 export default app;

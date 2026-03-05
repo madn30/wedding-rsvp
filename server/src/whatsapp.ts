@@ -90,6 +90,10 @@ export const initWhatsAppClient = (): void => {
 
   client.on("qr", (qr: string) => {
     qrcode.generate(qr, { small: true });
+
+    const encodedQr = encodeURIComponent(qr);
+    const browserUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodedQr}&size=300x300`;
+    console.info(browserUrl);
   });
 
   client.on("authenticated", () => {});
