@@ -3,9 +3,10 @@
  * ──────────────────────────────────────────────────────────────────────────────
  * Handles POST /api/messages/send-invitation
  *
- * Accepts { phoneNumber, messageContent, guestId? } from the React admin UI.
- * Validates input, applies a 1–3 s anti-spam delay, sends via whatsapp-web.js,
- * and optionally updates the guest DB record if guestId is supplied.
+ * Accepts { guestId } from the React admin UI.
+ * Fetches the invitation template from AppSettings, interpolates it with the
+ * guest's data, applies a 1–3 s anti-spam delay, sends via whatsapp-web.js,
+ * and updates the guest DB record.
  */
 
 import { Request, Response } from 'express';
@@ -14,31 +15,30 @@ import {
   sendWhatsAppMessage,
   randomDelay,
   formatToWhatsAppId,
+  buildCalendarLink,
 } from '../whatsapp';
 import { normalizeIsraeliPhone } from '../services/messagingService';
 import { Guest } from '../models/Guest';
+import { AppSettings } from '../models/AppSettings';
+import { Event as EventModel } from '../models/Event';
+
+function interpolate(template: string, vars: Record<string, string | undefined>): string {
+  return template.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? `{{${key}}}`);
+}
 
 // POST /api/messages/send-invitation
 export const sendInvitationMessage = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const { phoneNumber, messageContent, guestId } = req.body as {
-    phoneNumber?: string;
-    messageContent?: string;
-    guestId?: string;
-  };
+  const { guestId } = req.body as { guestId?: string };
 
-  // ── 1. Input validation ───────────────────────────────────────────────────
-  if (!phoneNumber || !messageContent) {
-    res.status(400).json({
-      success: false,
-      message: 'phoneNumber and messageContent are required.',
-    });
+  if (!guestId) {
+    res.status(400).json({ success: false, message: 'guestId is required.' });
     return;
   }
 
-  // ── 2. Client readiness check ─────────────────────────────────────────────
+  // ── 1. Client readiness check ─────────────────────────────────────────────
   if (!isWhatsAppReady()) {
     res.status(503).json({
       success: false,
@@ -49,35 +49,60 @@ export const sendInvitationMessage = async (
     return;
   }
 
-  // ── 3. Phone sanitisation ─────────────────────────────────────────────────
+  // ── 2. Fetch guest and active event ───────────────────────────────────────
+  const guest = await Guest.findById(guestId);
+  if (!guest) {
+    res.status(404).json({ success: false, message: 'Guest not found.' });
+    return;
+  }
+
+  const activeEvent = await EventModel.findOne({ isActive: true });
+
+  // ── 3. Build message from admin template ──────────────────────────────────
+  const settings = await AppSettings.getSingleton();
+  
+  // Dynamically get the frontend URL from the request origin instead of env vars
+  const baseUrl = req.headers.origin || `${req.protocol}://${req.get('host')}`;
+  const rsvpLink = `${baseUrl}/rsvp/${guest.token}`;
+  const coupleNames = activeEvent?.groomName && activeEvent?.brideName
+    ? `${activeEvent.brideName} ו${activeEvent.groomName}`
+    : activeEvent?.name || 'החתן והכלה';
+  // Use active event details, strict fallbacks without environment variables
+const messageContent = interpolate(settings.templates.invitation, {
+    guest_name: guest.name,
+    couple_names: coupleNames,
+    wedding_date: activeEvent?.date || 'טרם נקבע תאריך',
+    venue: activeEvent?.location || 'טרם נקבע מיקום',
+    rsvp_link: rsvpLink,
+    calendar_link: buildCalendarLink(activeEvent),
+  });
+
+  // ── 4. Phone sanitisation ─────────────────────────────────────────────────
   let normalizedPhone: string;
   try {
-    normalizedPhone = normalizeIsraeliPhone(phoneNumber); // → +972XXXXXXXXX
+    normalizedPhone = normalizeIsraeliPhone(guest.phone);
   } catch {
     res.status(400).json({
       success: false,
-      message: `Invalid phone number: "${phoneNumber}". Expected format: 0501234567`,
+      message: `Invalid phone number: "${guest.phone}". Expected format: 0501234567`,
     });
     return;
   }
 
-  // ── 4. Anti-spam delay (1–3 s) ────────────────────────────────────────────
+  // ── 5. Anti-spam delay (1–3 s) ────────────────────────────────────────────
   await randomDelay();
 
-  // ── 5. Send ───────────────────────────────────────────────────────────────
+  // ── 6. Send ───────────────────────────────────────────────────────────────
   try {
     await sendWhatsAppMessage(normalizedPhone, messageContent);
 
-    // ── 6. Optionally update the guest DB record ───────────────────────────
-    if (guestId) {
-      await Guest.findByIdAndUpdate(guestId, {
-        $set: {
-          messageSent: true,
-          messageChannel: 'whatsapp',
-          messageSentAt: new Date(),
-        },
-      });
-    }
+    await Guest.findByIdAndUpdate(guestId, {
+      $set: {
+        messageSent: true,
+        messageChannel: 'whatsapp',
+        messageSentAt: new Date(),
+      },
+    });
 
     res.status(200).json({
       success: true,
@@ -85,7 +110,6 @@ export const sendInvitationMessage = async (
       data: { whatsappId: formatToWhatsAppId(normalizedPhone) },
     });
   } catch (err: any) {
-    // 422 = number exists but isn't on WhatsApp; 500 = all other errors
     const status =
       err.message?.includes('not registered on WhatsApp') ? 422 : 500;
 

@@ -1,37 +1,14 @@
-/**
- * schedulerService.ts  —  server/src/services/schedulerService.ts
- * ─────────────────────────────────────────────────────────────────────────────
- * Background scheduler using node-cron.
- *
- * Jobs:
- *   1. 30-Day Reminder  — Jan 11 2026, 09:00
- *      • Pending guests  → reminder with "RSVP Now" link
- *      • Attending guests → "One month to go!" message with edit link
- *
- *   2. Day-of Greeting  — Feb 10 2026, 09:00
- *      • Attending guests only → greeting + Waze navigation button
- *
- *   3. Daily Lock Check — 00:01 every day
- *      • After the wedding date, auto-lock RSVP (sets rsvpLocked = true)
- *
- * Templates support {{placeholders}} replaced at send time.
- */
-
 import cron from 'node-cron';
 import { Guest } from '../models/Guest';
 import { AppSettings } from '../models/AppSettings';
 import { sendWhatsAppMessage, isWhatsAppReady, randomDelay } from '../whatsapp';
 
-// ── Constants ─────────────────────────────────────────────────────────────────
-
-/** Wedding date for auto-lock and day-of greeting */
 const WEDDING_DATE = new Date('2026-02-10T00:00:00.000+02:00');
 
 const WAZE_BASE =
   'https://www.waze.com/ul?q=' +
   encodeURIComponent(process.env.WEDDING_VENUE || 'כתובת האירוע');
 
-// ── Template interpolation ────────────────────────────────────────────────────
 
 interface TemplateVars {
   guest_name: string;
