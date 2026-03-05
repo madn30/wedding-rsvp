@@ -87,6 +87,9 @@ export const initWhatsAppClient = (): void => {
         "--disable-gpu",
         "--single-process",
         "--no-zygote",
+        "--single-process", 
+        "--disable-extensions",
+        "--disable-web-security", 
       ],
     },
   });
