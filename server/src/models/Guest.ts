@@ -1,8 +1,13 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, { Document, Schema } from "mongoose";
 
-export type RSVPResponse = 'yes' | 'no' | 'maybe' | null;
-export type MessageChannel = 'sms' | 'whatsapp';
-export type FoodPreference = 'regular' | 'vegetarian' | 'vegan' | 'gluten-free' | null;
+export type RSVPResponse = "yes" | "no" | "maybe" | null;
+export type MessageChannel = "sms" | "whatsapp";
+export type FoodPreference =
+  | "regular"
+  | "vegetarian"
+  | "vegan"
+  | "gluten-free"
+  | null;
 
 export interface IGuest extends Document {
   name: string;
@@ -17,7 +22,7 @@ export interface IGuest extends Document {
   messageSent: boolean;
   messageChannel: MessageChannel | null;
   messageSentAt: Date | null;
-  whatsappReplied: boolean;  // true once guest has sent us at least one WhatsApp message
+  whatsappReplied: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -26,18 +31,18 @@ const GuestSchema = new Schema<IGuest>(
   {
     name: {
       type: String,
-      required: [true, 'Guest name is required'],
+      required: [true, "Guest name is required"],
       trim: true,
-      minlength: [2, 'Name must be at least 2 characters'],
-      maxlength: [100, 'Name cannot exceed 100 characters'],
+      minlength: [2, "Name must be at least 2 characters"],
+      maxlength: [100, "Name cannot exceed 100 characters"],
     },
     phone: {
       type: String,
-      required: [true, 'Phone number is required'],
+      required: [true, "Phone number is required"],
       unique: true,
       validate: {
         validator: (v: string) => /^\+9725\d{8}$/.test(v),
-        message: 'Phone must be a valid Israeli number in +972 format',
+        message: "Phone must be a valid Israeli number in +972 format",
       },
     },
     token: {
@@ -48,7 +53,7 @@ const GuestSchema = new Schema<IGuest>(
     },
     response: {
       type: String,
-      enum: ['yes', 'no', 'maybe', null],
+      enum: ["yes", "no", "maybe", null],
       default: null,
     },
     respondedAt: {
@@ -58,12 +63,12 @@ const GuestSchema = new Schema<IGuest>(
     numberOfGuests: {
       type: Number,
       default: 1,
-      min: [0, 'numberOfGuests cannot be negative'],
-      max: [20, 'numberOfGuests cannot exceed 20'],
+      min: [0, "numberOfGuests cannot be negative"],
+      max: [20, "numberOfGuests cannot exceed 20"],
     },
     foodPreference: {
       type: String,
-      enum: ['regular', 'vegetarian', 'vegan', 'gluten-free', null],
+      enum: ["regular", "vegetarian", "vegan", "gluten-free", null],
       default: null,
     },
     transportNeeded: {
@@ -73,8 +78,8 @@ const GuestSchema = new Schema<IGuest>(
     specialRequests: {
       type: String,
       trim: true,
-      maxlength: [500, 'Special requests cannot exceed 500 characters'],
-      default: '',
+      maxlength: [500, "Special requests cannot exceed 500 characters"],
+      default: "",
     },
     messageSent: {
       type: Boolean,
@@ -82,7 +87,7 @@ const GuestSchema = new Schema<IGuest>(
     },
     messageChannel: {
       type: String,
-      enum: ['sms', 'whatsapp', null],
+      enum: ["sms", "whatsapp", null],
       default: null,
     },
     messageSentAt: {
@@ -98,10 +103,10 @@ const GuestSchema = new Schema<IGuest>(
     timestamps: true,
     toJSON: { virtuals: true },
     toObject: { virtuals: true },
-  }
+  },
 );
 
 GuestSchema.index({ response: 1 });
 GuestSchema.index({ createdAt: -1 });
 
-export const Guest = mongoose.model<IGuest>('Guest', GuestSchema);
+export const Guest = mongoose.model<IGuest>("Guest", GuestSchema);

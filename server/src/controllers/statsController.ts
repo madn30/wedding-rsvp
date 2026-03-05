@@ -1,21 +1,22 @@
-import { Request, Response } from 'express';
-import { Guest } from '../models/Guest';
-import { asyncHandler } from '../utils/helpers';
+import { Request, Response } from "express";
+import { Guest } from "../models/Guest";
+import { asyncHandler } from "../utils/helpers";
 
-// GET /api/stats
 export const getStats = asyncHandler(async (_req: Request, res: Response) => {
-  const [total, yes, no, maybe, messageSent, guestCountAgg] = await Promise.all([
-    Guest.countDocuments(),
-    Guest.countDocuments({ response: 'yes' }),
-    Guest.countDocuments({ response: 'no' }),
-    Guest.countDocuments({ response: 'maybe' }),
-    Guest.countDocuments({ messageSent: true }),
-    // Sum numberOfGuests only for confirmed (yes) responses
-    Guest.aggregate([
-      { $match: { response: 'yes' } },
-      { $group: { _id: null, total: { $sum: '$numberOfGuests' } } },
-    ]),
-  ]);
+  const [total, yes, no, maybe, messageSent, guestCountAgg] = await Promise.all(
+    [
+      Guest.countDocuments(),
+      Guest.countDocuments({ response: "yes" }),
+      Guest.countDocuments({ response: "no" }),
+      Guest.countDocuments({ response: "maybe" }),
+      Guest.countDocuments({ messageSent: true }),
+
+      Guest.aggregate([
+        { $match: { response: "yes" } },
+        { $group: { _id: null, total: { $sum: "$numberOfGuests" } } },
+      ]),
+    ],
+  );
 
   const pending = total - yes - no - maybe;
   const responseRate =

@@ -1,26 +1,25 @@
-import React, { memo, useCallback } from 'react';
-import { useDraggable, useDroppable } from '@dnd-kit/core';
-import { SeatingTable } from '../../store/seatingStore';
+import React, { memo, useCallback } from "react";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
+import { SeatingTable } from "../../store/seatingStore";
 
 interface TableItemProps {
   table: SeatingTable;
   isSelected: boolean;
-  /** True when a guest is being dragged over this table */
+
   isGuestHovering: boolean;
   onSelect: (id: string) => void;
   onDoubleClick?: () => void;
-  /** Scale factor based on canvas size (1 = reference 600px width) */
+
   canvasScale?: number;
-  /** Actual canvas pixel dimensions — used to clamp drag within bounds */
+
   canvasDims?: { w: number; h: number };
-  /** True while a TABLE (not a guest) is being dragged — suppresses guest-hover highlights */
+
   isDraggingTable?: boolean;
-  /** True immediately after this table was successfully dropped — triggers lock-flash */
+
   isJustDropped?: boolean;
 }
 
-// ─── Element types (floor decorations, no seating) ───────────────────────────
-const ELEMENT_TYPES = new Set(['dj', 'dance', 'bar', 'stage']);
+const ELEMENT_TYPES = new Set(["dj", "dance", "bar", "stage"]);
 
 function isElementType(type: string): boolean {
   return ELEMENT_TYPES.has(type);
@@ -35,43 +34,59 @@ interface ElementConfig {
 
 function getElementConfig(type: string): ElementConfig {
   switch (type) {
-    case 'dj':    return { emoji: '🎛️', label: 'DJ',   bg: '#1a0a2e', border: '#9b59b6' };
-    case 'dance': return { emoji: '💃', label: 'ריקוד', bg: '#0b2510', border: '#27ae60' };
-    case 'bar':   return { emoji: '🍹', label: 'בר',   bg: '#2a1205', border: '#e67e22' };
-    case 'stage': return { emoji: '🎤', label: 'במה',  bg: '#0a0a1e', border: '#2980b9' };
-    default:      return { emoji: '📍', label: type,   bg: '#1a2e45', border: '#ffffff30' };
+    case "dj":
+      return { emoji: "🎛️", label: "DJ", bg: "#1a0a2e", border: "#9b59b6" };
+    case "dance":
+      return { emoji: "💃", label: "ריקוד", bg: "#0b2510", border: "#27ae60" };
+    case "bar":
+      return { emoji: "🍹", label: "בר", bg: "#2a1205", border: "#e67e22" };
+    case "stage":
+      return { emoji: "🎤", label: "במה", bg: "#0a0a1e", border: "#2980b9" };
+    default:
+      return { emoji: "📍", label: type, bg: "#1a2e45", border: "#ffffff30" };
   }
 }
 
-// ─── Pixel dimensions per type (at reference canvas width = 600px) ───────────
-export function getTableDims(type: string, size: number): { w: number; h: number } {
+function getTableDims(type: string, size: number): { w: number; h: number } {
   const s = Math.max(0.5, Math.min(2.5, size ?? 1));
   switch (type) {
-    case 'rect':   return { w: Math.round(110 * s), h: Math.round(64 * s) };
-    case 'square': return { w: Math.round(80  * s), h: Math.round(80  * s) };
-    case 'oval':   return { w: Math.round(120 * s), h: Math.round(72  * s) };
-    case 'dj':     return { w: Math.round(90  * s), h: Math.round(90  * s) };
-    case 'dance':  return { w: Math.round(200 * s), h: Math.round(140 * s) };
-    case 'bar':    return { w: Math.round(150 * s), h: Math.round(60  * s) };
-    case 'stage':  return { w: Math.round(180 * s), h: Math.round(90  * s) };
-    case 'round':
-    default:       return { w: Math.round(80  * s), h: Math.round(80  * s) };
+    case "rect":
+      return { w: Math.round(110 * s), h: Math.round(64 * s) };
+    case "square":
+      return { w: Math.round(80 * s), h: Math.round(80 * s) };
+    case "oval":
+      return { w: Math.round(120 * s), h: Math.round(72 * s) };
+    case "dj":
+      return { w: Math.round(90 * s), h: Math.round(90 * s) };
+    case "dance":
+      return { w: Math.round(200 * s), h: Math.round(140 * s) };
+    case "bar":
+      return { w: Math.round(150 * s), h: Math.round(60 * s) };
+    case "stage":
+      return { w: Math.round(180 * s), h: Math.round(90 * s) };
+    case "round":
+    default:
+      return { w: Math.round(80 * s), h: Math.round(80 * s) };
   }
 }
 
 function getBorderRadius(type: string): string {
   switch (type) {
-    case 'round':
-    case 'oval':  return '50%';
-    case 'dj':    return '12px';
-    case 'dance': return '6px';
-    case 'bar':   return '8px';
-    case 'stage': return '10px';
-    default:      return '8px';
+    case "round":
+    case "oval":
+      return "50%";
+    case "dj":
+      return "12px";
+    case "dance":
+      return "6px";
+    case "bar":
+      return "8px";
+    case "stage":
+      return "10px";
+    default:
+      return "8px";
   }
 }
-
-// ─── Component ───────────────────────────────────────────────────────────────
 
 const TableItem: React.FC<TableItemProps> = memo(
   ({
@@ -87,7 +102,6 @@ const TableItem: React.FC<TableItemProps> = memo(
   }) => {
     const isElem = isElementType(table.type);
 
-    // Draggable — for repositioning on the canvas
     const {
       attributes,
       listeners,
@@ -96,39 +110,36 @@ const TableItem: React.FC<TableItemProps> = memo(
       isDragging,
     } = useDraggable({
       id: `drag-${table._id}`,
-      data: { type: 'table', tableId: table._id },
+      data: { type: "table", tableId: table._id },
     });
 
-    // Droppable — only for tables (elements don't seat guests)
-    const {
-      setNodeRef: setDropRef,
-      isOver: isGuestOver,
-    } = useDroppable({
+    const { setNodeRef: setDropRef, isOver: isGuestOver } = useDroppable({
       id: `drop-${table._id}`,
-      data: { type: isElem ? 'element' : 'table', tableId: table._id },
+      data: { type: isElem ? "element" : "table", tableId: table._id },
     });
 
-    // Combine both refs onto a single DOM node
     const combinedRef = useCallback(
       (node: HTMLElement | null) => {
         setDragRef(node);
-        if (!isElem) setDropRef(node); // elements aren't guest drop targets
+        if (!isElem) setDropRef(node);
       },
-      [setDragRef, setDropRef, isElem]
+      [setDragRef, setDropRef, isElem],
     );
 
     const isFull = !isElem && table.seatedGuests.length >= table.capacity;
     const baseDims = getTableDims(table.type, table.size);
-    // Scale dimensions proportionally to canvas size
-    const dims = { w: Math.round(baseDims.w * canvasScale), h: Math.round(baseDims.h * canvasScale) };
 
-    // Guest hover highlight — suppressed while a table is being dragged
-    const highlighting = !isElem && !isDraggingTable && (isGuestOver || isGuestHovering);
+    const dims = {
+      w: Math.round(baseDims.w * canvasScale),
+      h: Math.round(baseDims.h * canvasScale),
+    };
+
+    const highlighting =
+      !isElem && !isDraggingTable && (isGuestOver || isGuestHovering);
 
     const rawTranslateX = transform?.x ?? 0;
     const rawTranslateY = transform?.y ?? 0;
 
-    // Clamp drag so the table center never pushes an edge outside the canvas
     let translateX = rawTranslateX;
     let translateY = rawTranslateY;
     if (canvasDims && canvasDims.w > 0 && canvasDims.h > 0) {
@@ -136,47 +147,43 @@ const TableItem: React.FC<TableItemProps> = memo(
       const halfHpx = dims.h / 2;
       const centerX = (table.x / 100) * canvasDims.w;
       const centerY = (table.y / 100) * canvasDims.h;
-      translateX = Math.max(halfWpx - centerX, Math.min(canvasDims.w - halfWpx - centerX, rawTranslateX));
-      translateY = Math.max(halfHpx - centerY, Math.min(canvasDims.h - halfHpx - centerY, rawTranslateY));
+      translateX = Math.max(
+        halfWpx - centerX,
+        Math.min(canvasDims.w - halfWpx - centerX, rawTranslateX),
+      );
+      translateY = Math.max(
+        halfHpx - centerY,
+        Math.min(canvasDims.h - halfHpx - centerY, rawTranslateY),
+      );
     }
 
-    // Transition: slower fade-out after the drop flash, instant while dragging
-    const transition = isDragging
-      ? 'none'
-      : isJustDropped
-      ? 'none'
-      : 'border-color 0.12s, box-shadow 0.55s ease-out, background 0.12s';
-
-    // ── Shared base style ────────────────────────────────────────────────────
     const baseStyle: React.CSSProperties = {
-      position: 'absolute',
-      left: `${table.x}%`,
-      top: `${table.y}%`,
+      position: "absolute",
+
+      left: `calc(${table.x}% - ${dims.w / 2}px)`,
+      top: `calc(${table.y}% - ${dims.h / 2}px)`,
       width: dims.w,
       height: dims.h,
       borderRadius: getBorderRadius(table.type),
       border: `2px solid`,
-      // Centering + drag delta + visual rotation
-      transform: `translate(-50%, -50%) translate(${translateX}px, ${translateY}px) rotate(${table.rotation ?? 0}deg)`,
+
+      transform: `translate(${translateX}px, ${translateY}px) rotate(${table.rotation ?? 0}deg)`,
       zIndex: isDragging ? 200 : isSelected ? 20 : 10,
       opacity: 1,
-      cursor: isDragging ? 'grabbing' : 'grab',
-      // GPU layer always on for smooth dragging and rotation/size changes
-      willChange: 'transform',
-      transition,
-      userSelect: 'none',
-      // Flash animation on drop
-      animation: isJustDropped ? 'table-lock-flash 0.7s ease-out forwards' : 'none',
-      // Critical for mobile: prevents scroll from interfering with drag
-      touchAction: 'none',
+      cursor: isDragging ? "grabbing" : "grab",
+      willChange: "transform",
+      transition: isDragging
+        ? "none"
+        : "border-color 0.12s, box-shadow 0.12s, background 0.12s",
+      userSelect: "none",
+      touchAction: "none",
     };
-
     const handleClick = useCallback(
       (e: React.MouseEvent) => {
         e.stopPropagation();
         onSelect(table._id);
       },
-      [table._id, onSelect]
+      [table._id, onSelect],
     );
 
     const handleDoubleClick = useCallback(
@@ -184,17 +191,16 @@ const TableItem: React.FC<TableItemProps> = memo(
         e.stopPropagation();
         onDoubleClick?.();
       },
-      [onDoubleClick]
+      [onDoubleClick],
     );
 
-    // ── Element rendering ────────────────────────────────────────────────────
     if (isElem) {
       const cfg = getElementConfig(table.type);
       const borderColor = isJustDropped
-        ? '#c9a84c'
+        ? "#c9a84c"
         : isSelected
-        ? '#c9a84c'
-        : cfg.border;
+          ? "#c9a84c"
+          : cfg.border;
       const boxShadow = isSelected
         ? `0 0 0 2px #c9a84c, 0 0 20px rgba(201,168,76,0.35)`
         : `0 4px 16px rgba(0,0,0,0.5)`;
@@ -228,28 +234,27 @@ const TableItem: React.FC<TableItemProps> = memo(
       );
     }
 
-    // ── Table rendering ──────────────────────────────────────────────────────
     const borderColor = isJustDropped
-      ? '#c9a84c'
+      ? "#c9a84c"
       : isSelected
-      ? '#c9a84c'
-      : highlighting
-      ? '#60a5fa'
-      : isFull
-      ? 'rgba(239,68,68,0.5)'
-      : 'rgba(255,255,255,0.12)';
+        ? "#c9a84c"
+        : highlighting
+          ? "#60a5fa"
+          : isFull
+            ? "rgba(239,68,68,0.5)"
+            : "rgba(255,255,255,0.12)";
 
     const background = highlighting
-      ? '#1e3a5f'
+      ? "#1e3a5f"
       : isFull
-      ? '#1a2e20'
-      : '#1a2e45';
+        ? "#1a2e20"
+        : "#1a2e45";
 
     const boxShadow = isSelected
-      ? '0 0 0 2px #c9a84c, 0 0 20px rgba(201,168,76,0.35)'
+      ? "0 0 0 2px #c9a84c, 0 0 20px rgba(201,168,76,0.35)"
       : highlighting
-      ? '0 0 0 2px #60a5fa, 0 0 20px rgba(96,165,250,0.4)'
-      : '0 4px 12px rgba(0,0,0,0.45)';
+        ? "0 0 0 2px #60a5fa, 0 0 20px rgba(96,165,250,0.4)"
+        : "0 4px 12px rgba(0,0,0,0.45)";
 
     return (
       <div
@@ -260,7 +265,7 @@ const TableItem: React.FC<TableItemProps> = memo(
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
       >
-        {/* Counter-rotate the label so it always reads horizontally */}
+        {}
         <div
           style={{ transform: `rotate(-${table.rotation ?? 0}deg)` }}
           className="flex flex-col items-center justify-center h-full pointer-events-none select-none px-1"
@@ -275,16 +280,20 @@ const TableItem: React.FC<TableItemProps> = memo(
             {table.seatedGuests.length}/{table.capacity}
           </span>
           {isFull && (
-            <span className="text-[9px] text-red-400 mt-0.5 font-semibold">מלא</span>
+            <span className="text-[9px] text-red-400 mt-0.5 font-semibold">
+              מלא
+            </span>
           )}
           {highlighting && !isFull && (
-            <span className="text-[9px] text-[#60a5fa] mt-0.5 animate-pulse">⬇ שחרר</span>
+            <span className="text-[9px] text-[#60a5fa] mt-0.5 animate-pulse">
+              ⬇ שחרר
+            </span>
           )}
         </div>
       </div>
     );
-  }
+  },
 );
 
-TableItem.displayName = 'TableItem';
+TableItem.displayName = "TableItem";
 export default TableItem;

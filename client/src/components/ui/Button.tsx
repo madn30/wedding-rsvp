@@ -1,24 +1,24 @@
-import { ButtonHTMLAttributes, ReactNode } from 'react';
-import s from './Button.module.css';
+import { ButtonHTMLAttributes, ReactNode } from "react";
+import s from "./Button.module.css";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'icon';
-  size?: 'sm' | 'md' | 'lg';
+  variant?: "primary" | "secondary" | "ghost" | "danger" | "icon";
+  size?: "sm" | "md" | "lg";
   full?: boolean;
   children: ReactNode;
 }
 
 export const Button = ({
-  variant = 'primary',
-  size = 'md',
+  variant = "primary",
+  size = "md",
   full = false,
-  className = '',
+  className = "",
   children,
   ...rest
 }: ButtonProps) => {
   const variantClass = s[variant] ?? s.primary;
-  const sizeClass    = size === 'sm' ? s.sm : size === 'lg' ? s.lg : '';
-  const fullClass    = full ? s.full : '';
+  const sizeClass = size === "sm" ? s.sm : size === "lg" ? s.lg : "";
+  const fullClass = full ? s.full : "";
 
   return (
     <button

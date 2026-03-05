@@ -5,9 +5,9 @@ import {
   useEffect,
   useCallback,
   ReactNode,
-} from 'react';
-import { Admin } from '../types';
-import { login as loginService, getMe } from '../services/authService';
+} from "react";
+import { Admin } from "../types";
+import { login as loginService, getMe } from "../services/authService";
 
 interface AuthContextValue {
   admin: Admin | null;
@@ -24,12 +24,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   const logout = useCallback(() => {
-    localStorage.removeItem('admin_token');
+    localStorage.removeItem("admin_token");
     setAdmin(null);
   }, []);
 
   useEffect(() => {
-    const token = localStorage.getItem('admin_token');
+    const token = localStorage.getItem("admin_token");
     if (!token) {
       setIsLoading(false);
       return;
@@ -42,7 +42,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (email: string, password: string) => {
     const { token, admin } = await loginService(email, password);
-    localStorage.setItem('admin_token', token);
+    localStorage.setItem("admin_token", token);
     setAdmin(admin);
   };
 
@@ -57,6 +57,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 export const useAuth = (): AuthContextValue => {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 };

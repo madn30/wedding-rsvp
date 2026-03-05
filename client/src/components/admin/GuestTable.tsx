@@ -1,9 +1,12 @@
-import { useState } from 'react';
-import { Guest } from '../../types';
-import { ResponseBadge, Spinner } from '../ui';
-import { sendWhatsAppInvitation, deleteGuest } from '../../services/guestService';
-import toast from 'react-hot-toast';
-import { MessageCircle, ExternalLink, Trash2, Users } from 'lucide-react';
+import { useState } from "react";
+import { Guest } from "../../types";
+import { ResponseBadge, Spinner } from "../ui";
+import {
+  sendWhatsAppInvitation,
+  deleteGuest,
+} from "../../services/guestService";
+import toast from "react-hot-toast";
+import { MessageCircle, ExternalLink, Trash2, Users } from "lucide-react";
 
 interface GuestTableProps {
   guests: Guest[];
@@ -21,8 +24,8 @@ export const GuestTable = ({ guests, onRefresh }: GuestTableProps) => {
       onRefresh();
     } catch (err: unknown) {
       const msg =
-        (err as { response?: { data?: { message?: string } } })
-          ?.response?.data?.message || 'שגיאה בשליחת ההזמנה';
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "שגיאה בשליחת ההזמנה";
       toast.error(msg);
     } finally {
       setLoadingId(null);
@@ -33,10 +36,10 @@ export const GuestTable = ({ guests, onRefresh }: GuestTableProps) => {
     if (!confirm(`למחוק את ${guest.name}?`)) return;
     try {
       await deleteGuest(guest._id);
-      toast.success('האורח נמחק');
+      toast.success("האורח נמחק");
       onRefresh();
     } catch {
-      toast.error('שגיאה במחיקה');
+      toast.error("שגיאה במחיקה");
     }
   };
 
@@ -44,7 +47,9 @@ export const GuestTable = ({ guests, onRefresh }: GuestTableProps) => {
     return (
       <div className="flex flex-col items-center justify-center p-16 text-white/30 text-center">
         <Users size={48} className="mb-4 opacity-20" />
-        <p className="text-lg font-serif italic">לא נמצאו אורחים התואמים לחיפוש</p>
+        <p className="text-lg font-serif italic">
+          לא נמצאו אורחים התואמים לחיפוש
+        </p>
       </div>
     );
   }
@@ -54,18 +59,26 @@ export const GuestTable = ({ guests, onRefresh }: GuestTableProps) => {
       <table className="w-full text-right border-collapse">
         <thead className="bg-white/[0.03] border-b border-[#c9a84c]/20 text-[#e8c97e] font-serif text-sm">
           <tr>
-            {['שם', 'טלפון', 'תשובה', 'הודעה', 'תאריך', 'פעולות'].map(h => (
-              <th key={h} className="p-4 whitespace-nowrap font-medium">{h}</th>
+            {["שם", "טלפון", "תשובה", "הודעה", "תאריך", "פעולות"].map((h) => (
+              <th key={h} className="p-4 whitespace-nowrap font-medium">
+                {h}
+              </th>
             ))}
           </tr>
         </thead>
         <tbody className="text-sm">
-          {guests.map(guest => (
-            <tr key={guest._id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors group">
+          {guests.map((guest) => (
+            <tr
+              key={guest._id}
+              className="border-b border-white/5 hover:bg-white/[0.02] transition-colors group"
+            >
               <td className="p-4 font-semibold text-[#faf6ef] whitespace-nowrap">
                 {guest.name}
               </td>
-              <td className="p-4 text-white/70 font-mono text-xs whitespace-nowrap" dir="ltr">
+              <td
+                className="p-4 text-white/70 font-mono text-xs whitespace-nowrap"
+                dir="ltr"
+              >
                 {guest.phone}
               </td>
               <td className="p-4 whitespace-nowrap">
@@ -84,12 +97,14 @@ export const GuestTable = ({ guests, onRefresh }: GuestTableProps) => {
               </td>
               <td className="p-4 text-white/40 text-xs whitespace-nowrap">
                 {guest.respondedAt
-                  ? new Date(guest.respondedAt).toLocaleDateString('he-IL')
-                  : '—'}
+                  ? new Date(guest.respondedAt).toLocaleDateString("he-IL")
+                  : "—"}
               </td>
               <td className="p-4 whitespace-nowrap">
                 {loadingId === guest._id ? (
-                  <div className="flex justify-center w-[100px]"><Spinner size="sm" /></div>
+                  <div className="flex justify-center w-[100px]">
+                    <Spinner size="sm" />
+                  </div>
                 ) : (
                   <div className="flex items-center gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
                     <button
