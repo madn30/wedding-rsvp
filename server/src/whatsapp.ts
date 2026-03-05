@@ -96,14 +96,18 @@ export const initWhatsAppClient = (): void => {
     console.info(browserUrl);
   });
 
-  client.on("authenticated", () => {});
-
-  client.on("auth_failure", () => {
-    ready = false;
-  });
-
   client.on("ready", () => {
     ready = true;
+    console.info("✅ WhatsApp Client is ready!");
+  });
+
+  client.on("authenticated", () => {
+    console.info("📩 Authenticated successfully!"); 
+  });
+
+  client.on("auth_failure", (msg) => {
+    ready = false;
+    console.info("❌ Auth failure:", msg); 
   });
 
   client.on("disconnected", () => {
