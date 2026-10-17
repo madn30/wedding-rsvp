@@ -10,32 +10,11 @@ const api = axios.create({
   },
 });
 
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem("admin_token");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error),
-);
-
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error.response?.status;
     const message = error.response?.data?.message || "שגיאה בלתי צפויה";
-
-    if (status === 401) {
-      localStorage.removeItem("admin_token");
-      if (
-        window.location.pathname.startsWith("/admin") &&
-        window.location.pathname !== "/admin/login"
-      ) {
-        window.location.href = "/admin/login";
-      }
-    }
 
     if (status !== 409 && status !== 404) {
       toast.error(message);

@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { protect } from "../middlewares/auth";
 import {
   getEvents,
   createEvent,
@@ -10,8 +9,6 @@ import {
 } from "../controllers/eventController";
 
 const router = Router();
-
-router.use(protect);
 
 router.get("/", getEvents);
 router.post("/", createEvent);

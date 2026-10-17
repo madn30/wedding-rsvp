@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { protect } from "../middlewares/auth";
 import {
   getSettings,
   updateTemplates,
@@ -9,8 +8,6 @@ import {
 } from "../controllers/settingsController";
 
 const router = Router();
-
-router.use(protect);
 
 router.get("/", getSettings);
 

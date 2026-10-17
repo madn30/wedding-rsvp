@@ -1,11 +1,9 @@
-import { NavLink, useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
+import { NavLink } from "react-router-dom";
 import { useEventContext } from "../../context/EventContext";
 import {
   LayoutDashboard,
   Users,
   Armchair,
-  LogOut,
   MessageSquare,
   CalendarClock,
 } from "lucide-react";
@@ -32,14 +30,7 @@ const NAV_ITEMS = [
 ];
 
 export const AdminSidebar = ({ isOpen, onClose }: AdminSidebarProps) => {
-  const { admin, logout } = useAuth();
   const { activeEvent } = useEventContext();
-  const navigate = useNavigate();
-
-  const handleLogout = () => {
-    logout();
-    navigate("/admin/login");
-  };
 
   return (
     <>
@@ -74,11 +65,6 @@ export const AdminSidebar = ({ isOpen, onClose }: AdminSidebarProps) => {
             <strong className="text-[#e8c97e] font-serif text-xl tracking-wide drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
               ניהול אירוע
             </strong>
-            {admin?.email && (
-              <span className="text-[10px] text-white/40 truncate w-full px-2 font-mono tracking-wider">
-                {admin.email}
-              </span>
-            )}
           </div>
         </div>
 
@@ -132,23 +118,6 @@ export const AdminSidebar = ({ isOpen, onClose }: AdminSidebarProps) => {
             </div>
           ))}
         </nav>
-
-        {}
-        <footer className="p-4 border-t border-white/5 bg-[#060a11]/30">
-          <button
-            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-[#f1948a]/80 border border-transparent hover:bg-[#f1948a]/10 hover:border-[#f1948a]/20 hover:text-[#f1948a] hover:shadow-[0_0_15px_rgba(241,148,138,0.1)] transition-all duration-300 group"
-            onClick={handleLogout}
-          >
-            <LogOut
-              size={18}
-              className="group-hover:-translate-x-1 transition-transform duration-300"
-            />
-
-            <span className="text-sm font-medium tracking-wide">
-              התנתקות מערכת
-            </span>
-          </button>
-        </footer>
       </aside>
     </>
   );

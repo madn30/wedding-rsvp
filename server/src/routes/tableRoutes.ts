@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { protect } from "../middlewares/auth";
 import {
   getTables,
   createTable,
@@ -10,8 +9,6 @@ import {
 } from "../controllers/tableController";
 
 const router = Router();
-
-router.use(protect);
 
 router.get("/", getTables);
 router.post("/", createTable);

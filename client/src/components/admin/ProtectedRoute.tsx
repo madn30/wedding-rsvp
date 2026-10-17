@@ -1,12 +1,10 @@
 import { Navigate, Outlet } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
 import { useEventContext } from "../../context/EventContext";
 
 export const ProtectedRoute = () => {
-  const { isLoading: authLoading } = useAuth();
-  const { events, isLoading: eventsLoading } = useEventContext();
+  const { events, isLoading } = useEventContext();
 
-  if (authLoading || eventsLoading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="w-8 h-8 border-2 border-[#c9a84c] border-t-transparent rounded-full animate-spin" />

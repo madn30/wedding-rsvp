@@ -1,11 +1,8 @@
 import { useState, useEffect } from "react";
-import { Outlet, Navigate, useLocation } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { Outlet, useLocation } from "react-router-dom";
 import { AdminSidebar } from "../components/admin/AdminSidebar";
-import { FullPageLoader } from "../components/ui";
 
 export const AdminLayout = () => {
-  const { isAuthenticated, isLoading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
 
@@ -19,9 +16,6 @@ export const AdminLayout = () => {
       document.body.style.overflow = "";
     };
   }, [sidebarOpen]);
-
-  if (isLoading) return <FullPageLoader />;
-  if (!isAuthenticated) return <Navigate to="/admin/login" replace />;
 
   return (
     <div dir="rtl" className="flex min-h-[100dvh] bg-[#111827]">

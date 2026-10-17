@@ -43,11 +43,6 @@ export interface Stats {
   totalConfirmedGuests: number;
 }
 
-export interface Admin {
-  id: string;
-  email: string;
-}
-
 export interface PaginationMeta {
   total: number;
   page: number;

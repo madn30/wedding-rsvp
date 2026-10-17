@@ -1,11 +1,16 @@
 import mongoose from "mongoose";
+import { MongoMemoryServer } from "mongodb-memory-server";
 
 const connectDB = async (): Promise<void> => {
   try {
-    const mongoURI = process.env.MONGODB_URI;
+    let mongoURI = process.env.MONGODB_URI;
 
     if (!mongoURI) {
-      throw new Error("MONGO_URI is not defined in environment variables");
+      const memoryServer = await MongoMemoryServer.create();
+      mongoURI = memoryServer.getUri();
+      console.info(
+        "⚠️ MONGODB_URI not set, using an in-memory database (data resets on restart)",
+      );
     }
 
     const conn = await mongoose.connect(mongoURI);
