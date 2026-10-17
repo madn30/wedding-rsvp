@@ -14,13 +14,6 @@ client/dist/
 server/dist/
 *.log
 
-# OpenClaw-generated files
-*.openclaw
-.clawcache/
-.clawstore/
-openclaw-*
-claw-*
-
 # Environment variables — NEVER commit real secrets
 .env
 .env.local
@@ -36,17 +29,3 @@ client/.vite/
 client/.turbo/
 client/.tsbuildinfo
 server/.tsbuildinfo
-
-# AI agent / assistant files
-AGENTS.md
-BOOTSTRAP.md
-HEARTBEAT.md
-IDENTITY.md
-SOUL.md
-TOOLS.md
-USER.md
-MEMORY.md
-memory/
-openclaw.config.ts
-Dockerfile
-docker-compose.yml
