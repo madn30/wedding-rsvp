@@ -1,4 +1,5 @@
 import api from "./api";
+import { exportGuestsCSV } from "./localBackend";
 import { Guest, GuestForm, ApiResponse, PaginationMeta } from "../types";
 
 export interface GetGuestsParams {
@@ -34,24 +35,17 @@ export const sendWhatsAppInvitation = async (guest: Guest): Promise<void> => {
 };
 
 export const exportCSV = (): void => {
-  const baseUrl =
-    (import.meta.env.VITE_API_URL as string) || "http://localhost:5001/api";
-  const url = `${baseUrl}/guests/export`;
-
-  fetch(url)
-    .then((res) => {
-      if (!res.ok) throw new Error(`Export failed: ${res.status}`);
-      return res.blob();
-    })
-    .then((blob) => {
-      const blobUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = "guests.csv";
-      a.click();
-      window.URL.revokeObjectURL(blobUrl);
-    })
-    .catch(() => {
-      alert("שגיאה ביצוא הקובץ");
+  try {
+    const blob = new Blob([exportGuestsCSV()], {
+      type: "text/csv;charset=utf-8",
     });
+    const blobUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = "guests.csv";
+    a.click();
+    window.URL.revokeObjectURL(blobUrl);
+  } catch {
+    alert("שגיאה ביצוא הקובץ");
+  }
 };

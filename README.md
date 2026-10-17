@@ -63,12 +63,15 @@ starts an in-memory MongoDB, so data resets on every restart.
 
 ```bash
 cd client
-cp .env.example .env
 npm install
 npm run dev
 ```
 
 Visit: http://localhost:5173
+
+The client does not call the server: `src/services/localBackend.ts` is an axios adapter
+that answers every request in the browser and keeps the data in `localStorage`. Clear the
+site data to start over.
 
 ## 🔐 API Endpoints
 
@@ -106,7 +109,6 @@ Israeli numbers are accepted as:
 2. Import to Vercel
 3. Set `Build Command`: `npm run build`
 4. Set `Output Directory`: `dist`
-5. Add env variable: `VITE_API_URL=https://your-backend.render.com`
 
 ### MongoDB → Atlas
 

@@ -1,12 +1,11 @@
 import axios from "axios";
 import toast from "react-hot-toast";
+import { localAdapter } from "./localBackend";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5001/api",
-  timeout: 15000,
+  adapter: localAdapter,
   headers: {
     "Content-Type": "application/json",
-    "ngrok-skip-browser-warning": "true",
   },
 });
 
