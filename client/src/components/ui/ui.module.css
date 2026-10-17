@@ -1,4 +1,3 @@
-/* ── Spinner ─────────────────────────────────────────────── */
 .spinner {
   border-radius: 50%;
   border-style: solid;
@@ -23,7 +22,6 @@
   border-width: 4px;
 }
 
-/* ── FullPageLoader ──────────────────────────────────────── */
 .fullPageLoader {
   min-height: 100dvh;
   display: flex;
@@ -51,72 +49,6 @@
   letter-spacing: 0.02em;
 }
 
-/* ── Card ────────────────────────────────────────────────── */
-.card {
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.65);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-md);
-}
-
-/* ── StatCard ────────────────────────────────────────────── */
-.statCard {
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.65);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-sm);
-  padding: var(--sp-5) var(--sp-6);
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-2);
-  border-right: 4px solid var(--clr-border);
-  transition:
-    transform var(--ease-base),
-    box-shadow var(--ease-base);
-}
-
-.statCard:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-}
-
-.statCardTop {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-2);
-}
-
-.statCardIcon {
-  font-size: 1.5rem;
-  line-height: 1;
-}
-
-.statCardValue {
-  font-size: var(--text-3xl);
-  font-weight: var(--weight-bold);
-  color: var(--clr-text);
-  font-family: var(--font-sans);
-  line-height: 1;
-}
-
-.statCardTitle {
-  font-family: var(--font-sans);
-  font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
-  color: var(--clr-text-secondary);
-}
-
-.statCardSub {
-  font-size: var(--text-xs);
-  color: var(--clr-text-muted);
-}
-
-/* ── Badge ───────────────────────────────────────────────── */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -144,79 +76,4 @@
 .badgePending {
   background: var(--clr-surface-subtle);
   color: var(--clr-text-secondary);
-}
-
-/* ── Modal ───────────────────────────────────────────────── */
-.overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 300;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--sp-4);
-  background: var(--clr-overlay);
-  animation: fadeIn 0.18s ease-out;
-}
-
-.modalPanel {
-  position: relative;
-  width: 100%;
-  max-width: 460px;
-  background: var(--clr-surface);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-xl);
-  padding: var(--sp-8);
-  max-height: 90dvh;
-  overflow-y: auto;
-  animation: slideUp 0.28s ease-out;
-}
-
-.modalHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--sp-6);
-}
-
-.modalTitle {
-  font-size: var(--text-xl);
-  font-weight: var(--weight-semibold);
-  color: var(--clr-text);
-}
-
-.modalClose {
-  width: 34px;
-  height: 34px;
-  border-radius: var(--radius-full);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--clr-text-muted);
-  font-size: var(--text-lg);
-  flex-shrink: 0;
-  transition:
-    background var(--ease-fast),
-    color var(--ease-fast);
-}
-
-.modalClose:hover {
-  background: var(--clr-surface-subtle);
-  color: var(--clr-text);
-}
-
-/* bottom sheet on mobile */
-@media (max-width: 480px) {
-  .overlay {
-    align-items: flex-end;
-    padding: 0;
-  }
-
-  .modalPanel {
-    max-width: 100%;
-    border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
-    padding: var(--sp-6) var(--sp-6) var(--sp-8);
-    max-height: 85dvh;
-    animation: slideUp 0.32s ease-out;
-  }
 }

@@ -18,7 +18,7 @@ import { LayoutGrid, Layers, Plus, Settings, Users } from "lucide-react";
 import { TableType, useSeatingStore } from "../store/seatingStore";
 import Canvas from "../components/seating/Canvas";
 import { snap } from "../components/seating/constants";
-import GuestDragGhost from "../components/seating/elements/GuestDragGhost";
+import { GuestDragGhost } from "../components/seating/elements/GuestDragGhost";
 import TableDetail from "../components/seating/elements/TableDetail";
 import GuestSidebar from "../components/seating/GuestSidebar";
 import AddElementPrompt from "../components/seating/modals/AddElementPrompt";

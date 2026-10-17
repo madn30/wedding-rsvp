@@ -1,7 +1,7 @@
 import React from "react";
 import { TableType } from "../../store/seatingStore";
 
-export const SNAP_PCT = 1;
+const SNAP_PCT = 1;
 
 export function snap(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, Math.round(v / SNAP_PCT) * SNAP_PCT));

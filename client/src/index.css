@@ -8,7 +8,6 @@
     scroll-behavior: smooth;
   }
 
-  /* איפוס מוחלט לתגית main - ללא ריפוד וללא שוליים */
   main {
     padding: 0;
     margin: 0;

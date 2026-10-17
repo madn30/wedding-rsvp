@@ -643,5 +643,3 @@ export const MessageCenterPage = () => {
     </div>
   );
 };
-
-export default MessageCenterPage;

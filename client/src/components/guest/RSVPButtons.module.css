@@ -26,7 +26,6 @@
     box-shadow var(--ease-base),
     opacity var(--ease-fast);
   min-height: 60px;
-  /* touch-friendly */
   touch-action: manipulation;
 }
 

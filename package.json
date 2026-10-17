@@ -11,9 +11,6 @@
   "author": "",
   "license": "ISC",
   "type": "commonjs",
-  "dependencies": {
-    "fs": "^0.0.1-security"
-  },
   "devDependencies": {
     "@babel/core": "^7.29.0",
     "@babel/generator": "^7.29.1",

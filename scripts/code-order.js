@@ -10,7 +10,6 @@ const EXTS = new Set([".js", ".jsx", ".ts", ".tsx"]);
 const ROOT = process.cwd();
 const SCRIPT_NAME = path.basename(__filename);
 
-// Use npx directly to avoid path issues with local node_modules
 const PRETTIER = `npx prettier`;
 const ESLINT = `npx eslint`;
 
@@ -188,31 +187,25 @@ function removeUnusedVariablesAndParams(ast) {
     VariableDeclarator(p) {
       const id = p.node.id;
 
-      // 1. Remove standard unused variables (e.g., const x = 5;)
       if (t.isIdentifier(id)) {
         const binding = p.scope.getBinding(id.name);
         if (binding && !binding.referenced) p.remove();
       }
-      // 2. Remove unused array destructuring (e.g., const [justDroppedTableId, setJustDroppedTableId] = useState())
       else if (t.isArrayPattern(id)) {
-        // Go backwards to safely pop from the end
         for (let i = id.elements.length - 1; i >= 0; i--) {
           const el = id.elements[i];
           if (t.isIdentifier(el)) {
             const binding = p.scope.getBinding(el.name);
             if (binding && !binding.referenced && binding.identifier === el) {
               if (i === id.elements.length - 1) {
-                // If it's the last element, we can safely shrink the array
                 id.elements.splice(i, 1);
               } else {
-                // If it's earlier in the array, replace with null to preserve the position of later variables: const [, setX] = ...
                 id.elements[i] = null;
               }
             }
           }
         }
 
-        // If the entire array pattern is empty or all elements are null, remove the whole variable declaration
         if (
           id.elements.length === 0 ||
           id.elements.every((el) => el === null)
@@ -222,7 +215,6 @@ function removeUnusedVariablesAndParams(ast) {
       }
     },
 
-    // 3. Remove unused destructured object properties (e.g., in React props or const { x } = y;)
     ObjectProperty(p) {
       if (p.parentPath.isObjectPattern()) {
         const value = p.node.value;
@@ -247,7 +239,6 @@ function removeUnusedVariablesAndParams(ast) {
       }
     },
 
-    // 4. Remove unused rest elements (e.g., const { x, ...rest } = y;)
     RestElement(p) {
       if (p.parentPath.isObjectPattern() && t.isIdentifier(p.node.argument)) {
         const binding = p.scope.getBinding(p.node.argument.name);
@@ -261,7 +252,6 @@ function removeUnusedVariablesAndParams(ast) {
       }
     },
 
-    // 5. Remove unused parameters from functions and arrow functions
     Function(p) {
       const params = p.get("params");
       for (let i = params.length - 1; i >= 0; i--) {
@@ -286,7 +276,6 @@ function removeUnusedVariablesAndParams(ast) {
       }
     },
 
-    // 6. Remove unused error param in catch blocks
     CatchClause(p) {
       if (p.node.param && t.isIdentifier(p.node.param)) {
         const binding = p.scope.getBinding(p.node.param.name);
@@ -372,7 +361,6 @@ function walk(dir, components) {
   }
 }
 
-// --- START ---
 console.log("🚀 Starting cleanup...");
 const componentsDir = path.join(ROOT, "src/components");
 const components = fs.existsSync(componentsDir)

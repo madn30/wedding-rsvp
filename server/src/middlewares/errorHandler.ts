@@ -34,14 +34,12 @@ const handleJWTExpiredError = (): AppError =>
 
 export const errorHandler = (
   err: MongoError & AppError,
-  req: Request,
+  _req: Request,
   res: Response,
+  _next: NextFunction,
 ): void => {
   let error = { ...err };
   error.message = err.message;
-
-  if (process.env.NODE_ENV === "development") {
-  }
 
   if (err.name === "CastError") error = handleCastErrorDB(err);
   if (err.code === 11000) error = handleDuplicateFieldsDB(err);

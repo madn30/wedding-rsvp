@@ -37,3 +37,16 @@ client/.turbo/
 client/.tsbuildinfo
 server/.tsbuildinfo
 
+# AI agent / assistant files
+AGENTS.md
+BOOTSTRAP.md
+HEARTBEAT.md
+IDENTITY.md
+SOUL.md
+TOOLS.md
+USER.md
+MEMORY.md
+memory/
+openclaw.config.ts
+Dockerfile
+docker-compose.yml

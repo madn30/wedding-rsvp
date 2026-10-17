@@ -15,5 +15,3 @@ export const GuestDragGhost: React.FC<GuestDragGhostProps> = ({ guest }) => (
     </span>
   </div>
 );
-
-export default GuestDragGhost;

@@ -5,7 +5,7 @@ import { guestNameRule } from "../utils/validators";
 
 export const validate =
   (schema: Joi.ObjectSchema) =>
-  (req: Request, res: Response, next: NextFunction): void => {
+  (req: Request, _res: Response, next: NextFunction): void => {
     const { error } = schema.validate(req.body, { abortEarly: false });
     if (error) {
       const message = error.details.map((d) => d.message).join("; ");

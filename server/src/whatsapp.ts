@@ -1,70 +1,8 @@
-interface CalendarEvent {
-  name?: string;
-  groomName?: string;
-  brideName?: string;
-  location?: string;
-  date?: string;
-  startTime?: string;
-}
 import { Client, LocalAuth } from "whatsapp-web.js";
 import path from "path";
 
 const qrcode = require("qrcode-terminal") as {
   generate: (text: string, opts?: { small?: boolean }) => void;
-};
-
-export const buildCalendarLink = (event: CalendarEvent | null): string => {
-  const coupleNames =
-    event?.groomName && event?.brideName
-      ? `${event.brideName} ו${event.groomName}`
-      : event?.name || "החתן והכלה";
-
-  const title = encodeURIComponent(`חתונת ${coupleNames}`);
-  const venue = encodeURIComponent(event?.location || "טרם נקבע מיקום");
-
-  let datesParam = "20260210/20260211";
-
-  if (event?.date && event?.startTime) {
-    try {
-      let isoDate = event.date;
-      if (isoDate.includes(".")) {
-        const [d, m, y] = isoDate.split(".");
-        isoDate = `${y}-${m}-${d}`;
-      } else if (isoDate.includes("/")) {
-        const [d, m, y] = isoDate.split("/");
-        isoDate = `${y}-${m}-${d}`;
-      }
-
-      const startDate = new Date(`${isoDate}T${event.startTime}:00`);
-      const endDate = new Date(startDate.getTime() + 6 * 60 * 60 * 1000);
-
-      const formatToGoogleCal = (d: Date) => {
-        return (
-          d.getFullYear().toString() +
-          (d.getMonth() + 1).toString().padStart(2, "0") +
-          d.getDate().toString().padStart(2, "0") +
-          "T" +
-          d.getHours().toString().padStart(2, "0") +
-          d.getMinutes().toString().padStart(2, "0") +
-          "00"
-        );
-      };
-
-      if (!isNaN(startDate.getTime())) {
-        datesParam = `${formatToGoogleCal(startDate)}/${formatToGoogleCal(endDate)}`;
-      }
-    } catch {}
-  }
-
-  return (
-    `https://calendar.google.com/calendar/render?action=TEMPLATE` +
-    `&text=${title}&dates=${datesParam}&location=${venue}`
-  );
-};
-
-export const buildWazeLink = (): string => {
-  const venue = encodeURIComponent(process.env.WEDDING_VENUE || "כתובת האירוע");
-  return `https://www.waze.com/ul?q=${venue}`;
 };
 
 let client: Client | null = null;
@@ -87,9 +25,8 @@ export const initWhatsAppClient = (): void => {
         "--disable-gpu",
         "--single-process",
         "--no-zygote",
-        "--single-process", 
         "--disable-extensions",
-        "--disable-web-security", 
+        "--disable-web-security",
       ],
     },
   });
