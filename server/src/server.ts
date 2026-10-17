@@ -10,7 +10,6 @@ import connectDB from "./config/database";
 import { errorHandler } from "./middlewares/errorHandler";
 import { initWhatsAppClient } from "./whatsapp";
 import { initScheduler } from "./services/schedulerService";
-import authRoutes from "./routes/authRoutes";
 import guestRoutes from "./routes/guestRoutes";
 import rsvpRoutes from "./routes/rsvpRoutes";
 import statsRoutes from "./routes/statsRoutes";
@@ -64,7 +63,6 @@ app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-app.use("/api/admin", authRoutes);
 app.use("/api/guests", guestRoutes);
 app.use("/api/rsvp", rsvpRoutes);
 app.use("/api/stats", statsRoutes);

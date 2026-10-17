@@ -34,13 +34,11 @@ export const sendWhatsAppInvitation = async (guest: Guest): Promise<void> => {
 };
 
 export const exportCSV = (): void => {
-  const token = localStorage.getItem("admin_token");
-
   const baseUrl =
-    (import.meta.env.VITE_API_URL as string) || "http://localhost:5000/api";
+    (import.meta.env.VITE_API_URL as string) || "http://localhost:5001/api";
   const url = `${baseUrl}/guests/export`;
 
-  fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+  fetch(url)
     .then((res) => {
       if (!res.ok) throw new Error(`Export failed: ${res.status}`);
       return res.blob();

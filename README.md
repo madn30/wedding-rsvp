@@ -14,7 +14,7 @@ wedding-rsvp/
 │   │   ├── models/             # Mongoose schemas
 │   │   ├── routes/             # API routes
 │   │   ├── services/           # Twilio service
-│   │   ├── utils/              # JWT, helpers, validators, seed
+│   │   ├── utils/              # helpers, validators
 │   │   └── server.ts           # Express entry point
 │   ├── .env.example
 │   ├── package.json
@@ -26,9 +26,9 @@ wedding-rsvp/
     │   │   ├── admin/          # AdminSidebar, GuestTable, AddGuestModal
     │   │   ├── guest/          # RSVPButtons
     │   │   └── ui/             # Spinner, Badge, StatCard, Modal
-    │   ├── context/            # AuthContext
+    │   ├── context/            # EventContext
     │   ├── hooks/              # useGuests, useStats, useDebounce
-    │   ├── pages/              # LoginPage, DashboardPage, GuestsPage, RSVPPage
+    │   ├── pages/              # DashboardPage, GuestsPage, RSVPPage
     │   ├── services/           # api.ts, authService, guestService
     │   ├── types/              # TypeScript interfaces
     │   ├── App.tsx
@@ -43,7 +43,7 @@ wedding-rsvp/
 ### Prerequisites
 
 - Node.js 18+
-- MongoDB Atlas account
+- MongoDB Atlas account (optional)
 - Twilio account (with SMS + WhatsApp sandbox)
 
 ### Backend Setup
@@ -56,11 +56,8 @@ npm install
 npm run dev
 ```
 
-**Seed admin user:**
-
-```bash
-npx ts-node src/utils/seed.ts
-```
+There is no login: the admin pages and API are open. Without `MONGODB_URI` the server
+starts an in-memory MongoDB, so data resets on every restart.
 
 ### Frontend Setup
 
@@ -75,18 +72,16 @@ Visit: http://localhost:5173
 
 ## 🔐 API Endpoints
 
-| Method | Route                  | Auth | Description                       |
-| ------ | ---------------------- | ---- | --------------------------------- |
-| POST   | `/api/admin/login`     | ❌   | Admin login                       |
-| GET    | `/api/admin/me`        | ✅   | Get current admin                 |
-| GET    | `/api/guests`          | ✅   | List guests (paginated, filtered) |
-| POST   | `/api/guests`          | ✅   | Add new guest                     |
-| DELETE | `/api/guests/:id`      | ✅   | Delete guest                      |
-| POST   | `/api/guests/:id/send` | ✅   | Send SMS/WhatsApp                 |
-| GET    | `/api/guests/export`   | ✅   | Export CSV                        |
-| GET    | `/api/rsvp/:token`     | ❌   | Get RSVP data                     |
-| POST   | `/api/rsvp/:token`     | ❌   | Submit RSVP                       |
-| GET    | `/api/stats`           | ✅   | Dashboard stats                   |
+| Method | Route                  | Description                       |
+| ------ | ---------------------- | --------------------------------- |
+| GET    | `/api/guests`          | List guests (paginated, filtered) |
+| POST   | `/api/guests`          | Add new guest                     |
+| DELETE | `/api/guests/:id`      | Delete guest                      |
+| POST   | `/api/guests/:id/send` | Send SMS/WhatsApp                 |
+| GET    | `/api/guests/export`   | Export CSV                        |
+| GET    | `/api/rsvp/:token`     | Get RSVP data                     |
+| POST   | `/api/rsvp/:token`     | Submit RSVP                       |
+| GET    | `/api/stats`           | Dashboard stats                   |
 
 ## 📱 Phone Number Format
 
@@ -121,8 +116,6 @@ Israeli numbers are accepted as:
 
 ## 🛡️ Security Features
 
-- JWT authentication (admin routes)
-- Bcrypt password hashing (12 salt rounds)
 - Rate limiting (global + RSVP-specific)
 - Helmet.js security headers
 - Input validation with Joi
@@ -131,6 +124,6 @@ Israeli numbers are accepted as:
 
 ## 🎨 Tech Stack
 
-**Backend:** Node.js, Express, TypeScript, MongoDB, Mongoose, JWT, Twilio, Joi, Helmet, express-rate-limit
+**Backend:** Node.js, Express, TypeScript, MongoDB, Mongoose, Twilio, Joi, Helmet, express-rate-limit
 
 **Frontend:** React 18, TypeScript, Vite, TailwindCSS, React Router v6, Axios, Recharts, React Hot Toast

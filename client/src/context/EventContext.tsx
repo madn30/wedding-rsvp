@@ -6,7 +6,6 @@ import {
   useEffect,
   ReactNode,
 } from "react";
-import { useAuth } from "./AuthContext";
 import {
   DBEvent,
   EventPayload,
@@ -44,7 +43,6 @@ const EventContext = createContext<EventContextType>({
 });
 
 export const EventProvider = ({ children }: { children: ReactNode }) => {
-  const { isAuthenticated, isLoading: authIsLoading } = useAuth();
   const [events, setEvents] = useState<DBEvent[]>([]);
   const [activeEventState, setActiveEventState] = useState<DBEvent | null>(
     null,
@@ -65,16 +63,8 @@ export const EventProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    if (authIsLoading) return;
-
-    if (isAuthenticated) {
-      refresh();
-    } else {
-      setIsLoading(false);
-      setEvents([]);
-      setActiveEventState(null);
-    }
-  }, [isAuthenticated, authIsLoading, refresh]);
+    refresh();
+  }, [refresh]);
 
   const setActiveEvent = useCallback(
     async (event: DBEvent | null): Promise<void> => {
